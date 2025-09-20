@@ -22,8 +22,9 @@ def fillet_edges(box, radius, edge_type):
             if not math.isclose(edge.Vertexes[0].Point.z, edge.Vertexes[1].Point.z):
                 edges_to_fillet.append(edge)
     elif edge_type == "bottom":
+        z_min = box.BoundBox.ZMin
         for edge in box.Edges:
-            if math.isclose(edge.Vertexes[0].Point.z, 0.0) and math.isclose(edge.Vertexes[1].Point.z, 0.0):
+            if math.isclose(edge.Vertexes[0].Point.z, z_min) and math.isclose(edge.Vertexes[1].Point.z, z_min):
                 edges_to_fillet.append(edge)
     elif edge_type == "top":
         z_max = box.BoundBox.ZMax

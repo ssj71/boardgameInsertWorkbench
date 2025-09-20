@@ -20,6 +20,7 @@ class BoxFeature:
         obj.addProperty("App::PropertyBool", "Lid", "Options", "Create lid").Lid = True
         obj.addProperty("App::PropertyLength", "LidThickness", "Options", "Lid thickness").LidThickness = 2.0
         obj.addProperty("App::PropertyLength", "Clearance", "Options", "Clearance for lid").Clearance = 0.1
+        obj.addProperty("App::PropertyLinkList", "Compartments", "Box", "Linked compartments")
 
     def execute(self, obj):
         # Rebuild geometry based on properties
@@ -44,6 +45,11 @@ class BoxFeature:
             cutter.translate(FreeCAD.Vector(0, obj.LidThickness, obj.Height - obj.LidThickness))
             box = box.cut(cutter)
             box = Part.Compound([box,lid])
+
+        # Subtract compartments if any
+        for comp in obj.Compartments:
+            if comp.Shape:
+                box = box.cut(comp.Shape)
         obj.Shape = box
 
 class BoxTaskPanel:
@@ -204,8 +210,10 @@ class ViewProviderBox:
         vobj.Proxy = self
 
     def setEdit(self, vobj, mode):
-        FreeCADGui.Control.showDialog(BoxTaskPanel(vobj.Object))
-        return True
+        if mode == 0:
+            FreeCADGui.Control.showDialog(BoxTaskPanel(vobj.Object))
+            return True
+        return None
 
     def unsetEdit(self, vobj, mode):
         FreeCADGui.Control.closeDialog()
@@ -221,7 +229,7 @@ class BoxMaker:
 
     def Activated(self):
         doc = FreeCAD.ActiveDocument or FreeCAD.newDocument()
-        obj = doc.addObject("Part::FeaturePython", "ParamBox")
+        obj = doc.addObject("Part::FeaturePython", "InsertBox")
         BoxFeature(obj)
         obj.ViewObject.Proxy = ViewProviderBox(obj.ViewObject)
         doc.recompute()
