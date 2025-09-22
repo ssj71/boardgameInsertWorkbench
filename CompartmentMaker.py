@@ -10,7 +10,6 @@ class CompartmentFeature:
         obj.addProperty("App::PropertyLength", "Width", "Compartment", "Width").Width = 64.5
         obj.addProperty("App::PropertyLength", "Depth", "Compartment", "Depth").Depth = 30.0
         # Fillets
-        obj.addProperty("App::PropertyBool", "FilletSides", "Compartment", "Fillet sides").FilletSides = True
         obj.addProperty("App::PropertyLength", "SideFilletRadius", "Compartment", "Side fillet radius").SideFilletRadius = 2.0
         obj.addProperty("App::PropertyBool", "FilletBottom", "Compartment", "Fillet bottom").FilletBottom = True
         obj.addProperty("App::PropertyLength", "BottomFilletRadius", "Compartment", "Bottom fillet radius").BottomFilletRadius = 2.0
@@ -27,10 +26,13 @@ class CompartmentFeature:
         z = obj.ZOffset - obj.Depth
         # Build the inner box
         inner = Part.makeBox(obj.Length, obj.Width, obj.Depth, FreeCAD.Vector(0,0,z))
-        if obj.FilletSides:
+        if obj.SideFilletRadius:
             inner = common.fillet_edges(inner, obj.SideFilletRadius, "sides")
-        if obj.FilletBottom:
-            inner = common.fillet_edges(inner, obj.BottomFilletRadius, "bottom")
+        if obj.BottomFilletRadius:
+            if obj.FilletBottom:
+                inner = common.fillet_edges(inner, obj.BottomFilletRadius, "bottom")
+            else:
+                inner = common.fillet_edges(inner, obj.BottomFilletRadius, "bottom2")
         
         #important distances
         y_center = obj.Width / 2
@@ -70,15 +72,16 @@ class CompartmentTaskPanel:
         self.hSpin = QtGui.QDoubleSpinBox(); self.hSpin.setRange(0,1000); self.hSpin.setValue(obj.Depth)
         dimsLayout.addWidget(QtGui.QLabel("Length:"),0,0); dimsLayout.addWidget(self.lSpin,0,1)
         dimsLayout.addWidget(QtGui.QLabel("Width:"),1,0); dimsLayout.addWidget(self.wSpin,1,1)
-        dimsLayout.addWidget(QtGui.QLabel("Height:"),2,0); dimsLayout.addWidget(self.hSpin,2,1)
+        dimsLayout.addWidget(QtGui.QLabel("Depth:"),2,0); dimsLayout.addWidget(self.hSpin,2,1)
         layout.addWidget(dimsGroup)
         
         filletGroup = QtGui.QGroupBox("Fillets")
         fLayout = QtGui.QGridLayout(filletGroup)
-        self.sideCheck = QtGui.QCheckBox("Fillet sides"); self.sideCheck.setChecked(obj.FilletSides)
+        self.sideCheck = QtGui.QLabel("Side Radius:");
         self.sideRad = QtGui.QDoubleSpinBox(); self.sideRad.setValue(obj.SideFilletRadius)
         fLayout.addWidget(self.sideCheck,0,0); fLayout.addWidget(self.sideRad,0,1)
-        self.bottomCheck = QtGui.QCheckBox("Fillet bottom"); self.bottomCheck.setChecked(obj.FilletBottom)
+        self.bottomCheck = QtGui.QCheckBox("Bottom Radius:"); self.bottomCheck.setChecked(obj.FilletBottom)
+        self.bottomCheck.setToolTip("If unchecked only front & back edges on the bottom will be filleted, set radius to 0 to disable")
         self.bottomRad = QtGui.QDoubleSpinBox(); self.bottomRad.setValue(obj.BottomFilletRadius)
         fLayout.addWidget(self.bottomCheck,1,0); fLayout.addWidget(self.bottomRad,1,1)
         layout.addWidget(filletGroup)
@@ -101,7 +104,6 @@ class CompartmentTaskPanel:
         self.obj.Length = self.lSpin.value()
         self.obj.Width = self.wSpin.value()
         self.obj.Depth = self.hSpin.value()
-        self.obj.FilletSides = self.sideCheck.isChecked()
         self.obj.SideFilletRadius = self.sideRad.value()
         self.obj.FilletBottom = self.bottomCheck.isChecked()
         self.obj.BottomFilletRadius = self.bottomRad.value()
