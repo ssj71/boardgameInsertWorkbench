@@ -2,6 +2,25 @@ import FreeCAD, FreeCADGui
 import Part
 import math
 
+def get_edges(box, edge_type):
+    found_edges = []
+    if edge_type == "sides":
+        for edge in box.Edges:
+            if not math.isclose(edge.Vertexes[0].Point.z, edge.Vertexes[1].Point.z):
+                found_edges.append(edge)
+    elif edge_type == "bottom" or edge_type == "bottom2":
+        z_min = box.BoundBox.ZMin
+        for edge in box.Edges:
+            if math.isclose(edge.Vertexes[0].Point.z, z_min) and math.isclose(edge.Vertexes[1].Point.z, z_min):
+                if edge_type != "bottom2" or edge.Vertexes[0].Point.x == edge.Vertexes[1].Point.x:
+                    #all bottom or just those that are parallel to the X axis
+                    found_edges.append(edge)
+    elif edge_type == "top":
+        z_max = box.BoundBox.ZMax
+        for edge in box.Edges:
+            if math.isclose(edge.Vertexes[0].Point.z, z_max) and math.isclose(edge.Vertexes[1].Point.z, z_max):
+                found_edges.append(edge)
+    return found_edges
 
 def fillet_edges(box, radius, edge_type):
     """
@@ -16,22 +35,7 @@ def fillet_edges(box, radius, edge_type):
         Part.Shape: The new shape after the fillet operation, or the original
                     shape if the operation fails.
     """
-    edges_to_fillet = []
-    if edge_type == "sides":
-        for edge in box.Edges:
-            if not math.isclose(edge.Vertexes[0].Point.z, edge.Vertexes[1].Point.z):
-                edges_to_fillet.append(edge)
-    elif edge_type == "bottom":
-        z_min = box.BoundBox.ZMin
-        for edge in box.Edges:
-            if math.isclose(edge.Vertexes[0].Point.z, z_min) and math.isclose(edge.Vertexes[1].Point.z, z_min):
-                edges_to_fillet.append(edge)
-    elif edge_type == "top":
-        z_max = box.BoundBox.ZMax
-        for edge in box.Edges:
-            if math.isclose(edge.Vertexes[0].Point.z, z_max) and math.isclose(edge.Vertexes[1].Point.z, z_max):
-                edges_to_fillet.append(edge)
-    
+    edges_to_fillet = get_edges(box, edge_type)
     if not edges_to_fillet:
         return box
     try:
@@ -54,10 +58,7 @@ def chamfer_bottom(box, size):
         Part.Shape: The new shape after the chamfer operation, or the original
                     shape if the operation fails.
     """
-    edges_to_chamfer = []
-    for edge in box.Edges:
-            if math.isclose(edge.Vertexes[0].Point.z, 0.0) and math.isclose(edge.Vertexes[1].Point.z, 0.0):
-                edges_to_chamfer.append(edge)
+    edges_to_chamfer = get_edges(box, "bottom")
     try:
         # For a 30-degree chamfer, d2 = d1 / tan(30)
         chamfer_d2 = size / math.tan(math.radians(30))
