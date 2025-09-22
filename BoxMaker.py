@@ -4,6 +4,8 @@ import Part
 import math
 import common
 
+RIM_WIDTH = FreeCAD.Units.Quantity("1 mm")
+
 class BoxFeature:
     def __init__(self, obj):
         obj.Proxy = self
@@ -48,7 +50,7 @@ class BoxFeature:
                 FreeCAD.Console.PrintError("Failed to create lid. Check clearance and dimensions.\n")
                 return
             lid.translate(FreeCAD.Vector(0, obj.Width + gap, 0))
-            cutter.translate(FreeCAD.Vector(0, obj.LidThickness, obj.Height - obj.LidThickness))
+            cutter.translate(FreeCAD.Vector(0, RIM_WIDTH, obj.Height - obj.LidThickness))
             box = box.cut(cutter)
             box = Part.Compound([box,lid])
         
@@ -184,8 +186,8 @@ def create_lid(L, W, H, clearance):
     """
     # Create the main body of the lid
     #currently the rim that holds the lid in place is 1mm wide
-    lid_l = L - 1*H - 2*clearance
-    lid_w = W - 2*H - 2*clearance
+    lid_l = L - 1*RIM_WIDTH - 2*clearance
+    lid_w = W - 2*RIM_WIDTH - 2*clearance
     lid_h = H
     
     lid_body = Part.makeBox(lid_l, lid_w, lid_h)
@@ -194,10 +196,7 @@ def create_lid(L, W, H, clearance):
     chamfer_d1 = H - FreeCAD.Units.Quantity(".01 mm")
     chamfer_d2 = chamfer_d1 / math.sqrt(3)
     
-    bevel_edges_to_chamfer = []
-    for edge in lid_body.Edges:
-        if math.isclose(edge.Vertexes[0].Point.z, H) and math.isclose(edge.Vertexes[1].Point.z, H):
-            bevel_edges_to_chamfer.append(edge)
+    bevel_edges_to_chamfer = common.get_edges(lid_body, "top")
     try:
         chamfered_bevel = lid_body.makeChamfer(chamfer_d1, chamfer_d2, bevel_edges_to_chamfer[1:])
     except Exception as e:
