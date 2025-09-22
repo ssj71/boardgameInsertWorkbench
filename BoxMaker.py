@@ -33,6 +33,12 @@ class BoxFeature:
             box = common.fillet_edges(box, obj.FilletRadius, "sides")
         if obj.FilletTop:
             box = common.fillet_edges(box, obj.TopFilletRadius, "top")
+        
+        # Subtract compartments if any
+        for comp in obj.Compartments:
+            if comp.Shape:
+                box = box.cut(comp.Shape)
+        
         # Add the lid if enabled
         if obj.Lid:
             gap = FreeCAD.Units.Quantity("2 mm")
@@ -45,11 +51,7 @@ class BoxFeature:
             cutter.translate(FreeCAD.Vector(0, obj.LidThickness, obj.Height - obj.LidThickness))
             box = box.cut(cutter)
             box = Part.Compound([box,lid])
-
-        # Subtract compartments if any
-        for comp in obj.Compartments:
-            if comp.Shape:
-                box = box.cut(comp.Shape)
+        
         obj.Shape = box
 
 class BoxTaskPanel:
