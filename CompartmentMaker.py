@@ -5,119 +5,227 @@ import Part, math, common
 class CompartmentFeature:
     def __init__(self, obj):
         obj.Proxy = self
-        # Dimensions
-        obj.addProperty("App::PropertyLength", "Length", "Compartment", "Length").Length = 91.0
-        obj.addProperty("App::PropertyLength", "Width", "Compartment", "Width").Width = 64.5
-        obj.addProperty("App::PropertyLength", "Depth", "Compartment", "Depth").Depth = 30.0
-        # Fillets
-        obj.addProperty("App::PropertyLength", "SideFilletRadius", "Compartment", "Side fillet radius").SideFilletRadius = 2.0
-        obj.addProperty("App::PropertyBool", "FilletBottom", "Compartment", "Fillet bottom").FilletBottom = True
-        obj.addProperty("App::PropertyLength", "BottomFilletRadius", "Compartment", "Bottom fillet radius").BottomFilletRadius = 2.0
-        # Finger holes
-        obj.addProperty("App::PropertyBool", "FingerFront", "FingerHoles", "Front finger hole").FingerFront = False
-        obj.addProperty("App::PropertyBool", "FingerBack", "FingerHoles", "Back finger hole").FingerBack = False
-        obj.addProperty("App::PropertyBool", "FingerLeft", "FingerHoles", "Left finger hole").FingerLeft = False
-        obj.addProperty("App::PropertyBool", "FingerRight", "FingerHoles", "Right finger hole").FingerRight = False
-        obj.addProperty("App::PropertyBool", "FingerBottom", "FingerHoles", "Bottom finger hole").FingerBottom = False
+        obj.addProperty("App::PropertyEnumeration", "ShapeType", "Compartment",
+                        "Compartment shape type").ShapeType = ["Box","Cylinder","Polygon","Box2"]
+        obj.ShapeType = "Box"
+        
+        obj.addProperty("App::PropertyLength", "Depth", "Compartment", "Depth").Depth = 20.0
+        obj.addProperty("App::PropertyLength", "ZOffset", "Compartment", "Z offset").ZOffset = 0.0
+        
+        # common to all: finger holes
         obj.addProperty("App::PropertyLength", "FingerRadius", "FingerHoles", "Finger hole radius").FingerRadius = 10.0
-        obj.addProperty("App::PropertyLength", "ZOffset", "Compartment", "ZOffset").ZOffset = 2.0
+        #obj.addProperty("App::PropertyBool", "FingerFront", "FingerHoles", "Front").FingerRadius = 10.0
+        for name in ["FingerFront","FingerBack","FingerLeft","FingerRight","FingerBottom"]:
+            obj.addProperty("App::PropertyBool", name, "FingerHoles", name)
+            setattr(obj,name,False)
+        
+        self.ensureProperties(obj)
+
+    def ensureProperties(self, obj):
+        """Ensure properties match current ShapeType"""
+        st = obj.ShapeType
+        # remove old shape-specific properties
+        for pname in ["Length","Width","Radius","Sides",
+                      "SideFilletRadius","BottomFilletRadius"]:
+            if pname in obj.PropertiesList:
+                obj.removeProperty(pname)
+        
+        if st == "Box":
+            obj.addProperty("App::PropertyLength","Length","Box","Length").Length=40
+            obj.addProperty("App::PropertyLength","Width","Box","Width").Width=30
+            obj.addProperty("App::PropertyLength","SideFilletRadius","Box","Side fillet radius").SideFilletRadius=2
+            obj.addProperty("App::PropertyLength","BottomFilletRadius","Box","Bottom fillet radius").BottomFilletRadius=0
+        
+        elif st == "Box2":
+            obj.addProperty("App::PropertyLength","Length","Box2","Length").Length=40
+            obj.addProperty("App::PropertyLength","Width","Box2","Width").Width=30
+            obj.addProperty("App::PropertyLength","BottomFilletRadius","Box2","Bottom fillet radius").BottomFilletRadius=2
+        
+        elif st == "Cylinder":
+            obj.addProperty("App::PropertyLength","Radius","Cylinder","Radius").Radius=15
+            obj.addProperty("App::PropertyLength","BottomFilletRadius","Cylinder","Bottom fillet radius").BottomFilletRadius=0
+        
+        elif st == "Polygon":
+            obj.addProperty("App::PropertyInteger","Sides","Polygon","Number of sides").Sides=6
+            obj.addProperty("App::PropertyLength","Radius","Polygon","Radius").Radius=10
+            obj.addProperty("App::PropertyLength","SideFilletRadius","Polygon","Side fillet radius").SideFilletRadius=2
+            obj.addProperty("App::PropertyLength","BottomFilletRadius","Polygon","Bottom fillet radius").BottomFilletRadius=0
+
+    def onChanged(self, obj, prop):
+        if prop=="ShapeType":
+            self.ensureProperties(obj)
 
     def execute(self, obj):
         z = obj.ZOffset - obj.Depth
-        # Build the inner box
-        inner = Part.makeBox(obj.Length, obj.Width, obj.Depth, FreeCAD.Vector(0,0,z))
-        if obj.SideFilletRadius:
-            inner = common.fillet_edges(inner, obj.SideFilletRadius, "sides")
-        if obj.BottomFilletRadius:
-            if obj.FilletBottom:
-                inner = common.fillet_edges(inner, obj.BottomFilletRadius, "bottom")
-            else:
-                inner = common.fillet_edges(inner, obj.BottomFilletRadius, "bottom2")
+        st = obj.ShapeType
         
-        #important distances
-        y_center = obj.Width / 2
-        x_center = obj.Length / 2
+        if st == "Box":
+            shape = Part.makeBox(obj.Length,obj.Width,obj.Depth,FreeCAD.Vector(0,0,z))
+            if obj.SideFilletRadius:
+                shape = common.fillet_edges(shape,obj.SideFilletRadius,"sides")
+            if obj.BottomFilletRadius:
+                shape = common.fillet_edges(shape,obj.BottomFilletRadius,"bottom")
+        elif st == "Box2":
+            shape = Part.makeBox(obj.Length,obj.Width,obj.Depth,FreeCAD.Vector(0,0,z))
+            if obj.BottomFilletRadius:
+                shape = common.fillet_edges(shape,obj.BottomFilletRadius,"bottom2")
         
-        shapes = [inner]
+        elif st == "Cylinder":
+            shape = Part.makeCylinder(obj.Radius,obj.Depth,FreeCAD.Vector(obj.Radius,obj.Radius,z))
+            if obj.BottomFilletRadius:
+                shape = common.fillet_edges(shape,obj.BottomFilletRadius,"bottom")
         
-        # Add finger holes
+        elif st == "Polygon":
+            poly = Part.makePolygon([FreeCAD.Vector(
+                math.cos(2*math.pi*i/obj.Sides)*obj.Radius,
+                math.sin(2*math.pi*i/obj.Sides)*obj.Radius,0)
+                for i in range(obj.Sides+1)])
+            face = Part.Face(poly)
+            shape = face.extrude(FreeCAD.Vector(0,0,obj.Depth))
+            shape.translate(FreeCAD.Vector(obj.Radius,obj.Radius,z))
+            if obj.SideFilletRadius:
+                shape = common.fillet_edges(shape,obj.SideFilletRadius,"sides")
+            if obj.BottomFilletRadius:
+                shape = common.fillet_edges(shape,obj.BottomFilletRadius,"bottom")
+        
+        # --- add finger holes ---
+        shapes = [shape]
         r = obj.FingerRadius
         h = obj.Depth * 2
         one = FreeCAD.Units.Quantity("1 mm")
-        if obj.FingerFront:
-            shapes.append(Part.makeCylinder(r, h, FreeCAD.Vector(x_center, 0, z-one)))
-        if obj.FingerBack:
-            shapes.append(Part.makeCylinder(r, h, FreeCAD.Vector(x_center, obj.Width, z-one)))
-        if obj.FingerLeft:
-            shapes.append(Part.makeCylinder(r, h, FreeCAD.Vector(0, y_center, z-one)))
-        if obj.FingerRight:
-            shapes.append(Part.makeCylinder(r, h, FreeCAD.Vector(obj.Length, y_center, z-one)))
-        if obj.FingerBottom:
-            shapes.append(Part.makeCylinder(r, h, FreeCAD.Vector(x_center, y_center, -one)))
+        cx = shape.BoundBox.XLength/2
+        cy = shape.BoundBox.YLength/2
+        if obj.FingerFront: shapes.append(Part.makeCylinder(r,h,FreeCAD.Vector(cx,0,z-one)))
+        if obj.FingerBack:  shapes.append(Part.makeCylinder(r,h,FreeCAD.Vector(cx,shape.BoundBox.YMax,z-one)))
+        if obj.FingerLeft:  shapes.append(Part.makeCylinder(r,h,FreeCAD.Vector(0,cy,z-one)))
+        if obj.FingerRight: shapes.append(Part.makeCylinder(r,h,FreeCAD.Vector(shape.BoundBox.XMax,cy,z-one)))
+        if obj.FingerBottom:shapes.append(Part.makeCylinder(r,h,FreeCAD.Vector(cx,cy,-one)))
         
-        cutter = Part.makeCompound(shapes)
-        #cutter = cutter.translate(FreeCAD.Vector(0, 0, obj.ZOffset - obj.Depth))
-        obj.Shape = cutter
+        obj.Shape = Part.makeCompound(shapes)
 
+# ---------------- TaskPanel ----------------
 class CompartmentTaskPanel:
     def __init__(self, obj):
-        form = QtGui.QWidget()
-        layout = QtGui.QVBoxLayout(form)
-        
-        dimsGroup = QtGui.QGroupBox("Dimensions")
-        dimsLayout = QtGui.QGridLayout(dimsGroup)
-        
-        self.lSpin = QtGui.QDoubleSpinBox(); self.lSpin.setRange(0,1000); self.lSpin.setValue(obj.Length)
-        self.wSpin = QtGui.QDoubleSpinBox(); self.wSpin.setRange(0,1000); self.wSpin.setValue(obj.Width)
-        self.hSpin = QtGui.QDoubleSpinBox(); self.hSpin.setRange(0,1000); self.hSpin.setValue(obj.Depth)
-        dimsLayout.addWidget(QtGui.QLabel("Length:"),0,0); dimsLayout.addWidget(self.lSpin,0,1)
-        dimsLayout.addWidget(QtGui.QLabel("Width:"),1,0); dimsLayout.addWidget(self.wSpin,1,1)
-        dimsLayout.addWidget(QtGui.QLabel("Depth:"),2,0); dimsLayout.addWidget(self.hSpin,2,1)
-        layout.addWidget(dimsGroup)
-        
-        filletGroup = QtGui.QGroupBox("Fillets")
-        fLayout = QtGui.QGridLayout(filletGroup)
-        self.sideCheck = QtGui.QLabel("Side Radius:");
-        self.sideRad = QtGui.QDoubleSpinBox(); self.sideRad.setValue(obj.SideFilletRadius)
-        fLayout.addWidget(self.sideCheck,0,0); fLayout.addWidget(self.sideRad,0,1)
-        self.bottomCheck = QtGui.QCheckBox("Bottom Radius:"); self.bottomCheck.setChecked(obj.FilletBottom)
-        self.bottomCheck.setToolTip("If unchecked only front & back edges on the bottom will be filleted, set radius to 0 to disable")
-        self.bottomRad = QtGui.QDoubleSpinBox(); self.bottomRad.setValue(obj.BottomFilletRadius)
-        fLayout.addWidget(self.bottomCheck,1,0); fLayout.addWidget(self.bottomRad,1,1)
-        layout.addWidget(filletGroup)
-        
-        fingerGroup = QtGui.QGroupBox("Finger Holes")
-        gLayout = QtGui.QGridLayout(fingerGroup)
-        self.front = QtGui.QCheckBox("Front"); self.front.setChecked(obj.FingerFront); gLayout.addWidget(self.front,0,0)
-        self.back = QtGui.QCheckBox("Back"); self.back.setChecked(obj.FingerBack); gLayout.addWidget(self.back,0,1)
-        self.left = QtGui.QCheckBox("Left"); self.left.setChecked(obj.FingerLeft); gLayout.addWidget(self.left,1,0)
-        self.right = QtGui.QCheckBox("Right"); self.right.setChecked(obj.FingerRight); gLayout.addWidget(self.right,1,1)
-        self.bottom = QtGui.QCheckBox("Bottom"); self.bottom.setChecked(obj.FingerBottom); gLayout.addWidget(self.bottom,2,0)
-        self.fingerRad = QtGui.QDoubleSpinBox(); self.fingerRad.setValue(obj.FingerRadius)
-        gLayout.addWidget(QtGui.QLabel("Radius:"),3,0); gLayout.addWidget(self.fingerRad,3,1)
-        layout.addWidget(fingerGroup)
-        
-        self.form = form
         self.obj = obj
+        self.form = QtGui.QWidget()
+        self.layout = QtGui.QVBoxLayout(self.form)
+
+        # shape selector
+        self.typeCombo = QtGui.QComboBox()
+        self.typeCombo.addItems(["Box","Cylinder","Polygon","Box2"])
+        self.typeCombo.setCurrentText(obj.ShapeType)
+        self.layout.addWidget(self.typeCombo)
+
+        # dynamic shape-specific area
+        self.dynamicArea = QtGui.QVBoxLayout()
+        self.layout.addLayout(self.dynamicArea)
+
+        # common finger hole group
+        fGroup = QtGui.QGroupBox("Finger Holes")
+        fl = QtGui.QFormLayout(fGroup)
+        self.rSpin = QtGui.QDoubleSpinBox(); self.rSpin.setRange(0,1000); self.rSpin.setValue(obj.FingerRadius)
+        self.chkFront = QtGui.QCheckBox("Front");  self.chkFront.setChecked(obj.FingerFront)
+        self.chkBack  = QtGui.QCheckBox("Back");   self.chkBack.setChecked(obj.FingerBack)
+        self.chkLeft  = QtGui.QCheckBox("Left");   self.chkLeft.setChecked(obj.FingerLeft)
+        self.chkRight = QtGui.QCheckBox("Right");  self.chkRight.setChecked(obj.FingerRight)
+        self.chkBottom= QtGui.QCheckBox("Bottom"); self.chkBottom.setChecked(obj.FingerBottom)
+        fl.addRow("Radius:", self.rSpin)
+        fl.addRow(self.chkFront, self.chkBack)
+        fl.addRow(self.chkLeft, self.chkRight)
+        fl.addRow(self.chkBottom)
+        self.layout.addWidget(fGroup)
+
+        self.typeCombo.currentIndexChanged.connect(self.rebuildForm)
+        self.rebuildForm()
+
+    def clearLayout(self,layout):
+        while layout.count():
+            item = layout.takeAt(0)
+            w=item.widget()
+            if w: w.deleteLater()
+            elif item.layout(): self.clearLayout(item.layout())
+
+    def rebuildForm(self):
+        self.clearLayout(self.dynamicArea)
+        st = self.typeCombo.currentText()
         
+        if st in ["Box","Box2"]:
+            lGroup = QtGui.QGroupBox("Dimensions")
+            fl = QtGui.QFormLayout(lGroup)
+            self.lSpin = QtGui.QDoubleSpinBox(); self.lSpin.setRange(0,1000); self.lSpin.setValue(getattr(self.obj,"Length",40))
+            self.wSpin = QtGui.QDoubleSpinBox(); self.wSpin.setRange(0,1000); self.wSpin.setValue(getattr(self.obj,"Width",30))
+            self.depthSpin = QtGui.QDoubleSpinBox(); self.depthSpin.setRange(0,1000); self.depthSpin.setValue(self.obj.Depth)
+            fl.addRow("Length:", self.lSpin)
+            fl.addRow("Width:", self.wSpin)
+            fl.addRow("Depth:", self.depthSpin)
+            self.dynamicArea.addWidget(lGroup)
+        
+        if st=="Cylinder":
+            g=QtGui.QGroupBox("Dimensions")
+            fl=QtGui.QFormLayout(g)
+            self.radSpin=QtGui.QDoubleSpinBox(); self.radSpin.setRange(0,1000); self.radSpin.setValue(getattr(self.obj,"Radius",20))
+            self.depthSpin = QtGui.QDoubleSpinBox(); self.depthSpin.setRange(0,1000); self.depthSpin.setValue(self.obj.Depth)
+            fl.addRow("Radius:",self.radSpin)
+            fl.addRow("Depth:", self.depthSpin)
+            self.dynamicArea.addWidget(g)
+        
+        if st=="Polygon":
+            g=QtGui.QGroupBox("Polygon")
+            fl=QtGui.QFormLayout(g)
+            self.sSpin=QtGui.QSpinBox(); self.sSpin.setRange(3,20); self.sSpin.setValue(getattr(self.obj,"Sides",6))
+            self.radSpin=QtGui.QDoubleSpinBox(); self.radSpin.setRange(0,1000); self.radSpin.setValue(getattr(self.obj,"Radius",20))
+            self.depthSpin = QtGui.QDoubleSpinBox(); self.depthSpin.setRange(0,1000); self.depthSpin.setValue(self.obj.Depth)
+            fl.addRow("Sides:",self.sSpin)
+            fl.addRow("Radius:",self.radSpin)
+            fl.addRow("Depth:", self.depthSpin)
+            self.dynamicArea.addWidget(g)
+        
+        if st in ["Box","Polygon"]:
+            fGroup = QtGui.QGroupBox("Fillets")
+            fl = QtGui.QFormLayout(fGroup)
+            self.sideSpin = QtGui.QDoubleSpinBox(); self.sideSpin.setRange(0,1000); self.sideSpin.setValue(getattr(self.obj,"SideFilletRadius",0))
+            self.bottomSpin = QtGui.QDoubleSpinBox(); self.bottomSpin.setRange(0,1000); self.bottomSpin.setValue(getattr(self.obj,"BottomFilletRadius",0))
+            fl.addRow("Side Radius:", self.sideSpin)
+            fl.addRow("Bottom Radius:", self.bottomSpin)
+            self.dynamicArea.addWidget(fGroup)
+        
+        if st in ["Box2","Cylinder"]:
+            fGroup = QtGui.QGroupBox("Fillets")
+            fl = QtGui.QFormLayout(fGroup)
+            self.bottomSpin = QtGui.QDoubleSpinBox(); self.bottomSpin.setRange(0,1000); self.bottomSpin.setValue(getattr(self.obj,"BottomFilletRadius",0))
+            fl.addRow("Bottom Radius:", self.bottomSpin)
+            self.dynamicArea.addWidget(fGroup)
+
     def accept(self):
-        self.obj.Length = self.lSpin.value()
-        self.obj.Width = self.wSpin.value()
-        self.obj.Depth = self.hSpin.value()
-        self.obj.SideFilletRadius = self.sideRad.value()
-        self.obj.FilletBottom = self.bottomCheck.isChecked()
-        self.obj.BottomFilletRadius = self.bottomRad.value()
-        self.obj.FingerFront = self.front.isChecked()
-        self.obj.FingerBack = self.back.isChecked()
-        self.obj.FingerLeft = self.left.isChecked()
-        self.obj.FingerRight = self.right.isChecked()
-        self.obj.FingerBottom = self.bottom.isChecked()
-        self.obj.FingerRadius = self.fingerRad.value()
+        st = self.typeCombo.currentText()
+        self.obj.ShapeType = st
+        self.obj.Depth = self.depthSpin.value()
+        if st in ["Box","Box2"]:
+            self.obj.Length = self.lSpin.value()
+            self.obj.Width  = self.wSpin.value()
+        if st in ["Box","Polygon"]:
+            self.obj.SideFilletRadius = self.sideSpin.value()
+            self.obj.BottomFilletRadius = self.bottomSpin.value()
+        if st in ["Box2","Cylinder"]:
+            self.obj.BottomFilletRadius = self.bottomSpin.value()
+        if st=="Cylinder":
+            self.obj.Radius=self.radSpin.value()
+        if st=="Polygon":
+            self.obj.Radius=self.radSpin.value()
+            self.obj.Sides=self.sSpin.value()
+
+        # finger hole values
+        self.obj.FingerRadius = self.rSpin.value()
+        self.obj.FingerFront  = self.chkFront.isChecked()
+        self.obj.FingerBack   = self.chkBack.isChecked()
+        self.obj.FingerLeft   = self.chkLeft.isChecked()
+        self.obj.FingerRight  = self.chkRight.isChecked()
+        self.obj.FingerBottom = self.chkBottom.isChecked()
+
         FreeCAD.ActiveDocument.recompute()
         return True
 
-    def reject(self):
-        return True
+    def reject(self): return True
 
 class ViewProviderCompartment:
     def __init__(self, vobj):

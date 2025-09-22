@@ -11,7 +11,7 @@ def get_edges(box, edge_type):
     elif edge_type == "bottom" or edge_type == "bottom2":
         z_min = box.BoundBox.ZMin
         for edge in box.Edges:
-            if math.isclose(edge.Vertexes[0].Point.z, z_min) and math.isclose(edge.Vertexes[1].Point.z, z_min):
+            if math.isclose(edge.Vertexes[0].Point.z, z_min) and (len(edge.Vertexes) == 1 or math.isclose(edge.Vertexes[1].Point.z, z_min)):
                 if edge_type != "bottom2" or edge.Vertexes[0].Point.x == edge.Vertexes[1].Point.x:
                     #all bottom or just those that are parallel to the X axis
                     found_edges.append(edge)
