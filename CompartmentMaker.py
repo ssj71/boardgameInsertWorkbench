@@ -148,8 +148,9 @@ class AddCompartment:
         obj = doc.addObject("Part::FeaturePython","Compartment")
         CompartmentFeature(obj)
         obj.ViewObject.Proxy = ViewProviderCompartment(obj.ViewObject)
-        if sel:
-            obj.Placement = parent.Placement
+        obj.Placement = parent.Placement
+        obj.Placement.Base.x += 2
+        obj.Placement.Base.y += 2
         obj.Visibility = False
         # Link compartment to parent
         parent.Compartments = [*parent.Compartments,obj]
