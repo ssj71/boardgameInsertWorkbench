@@ -1,6 +1,6 @@
 import FreeCAD, FreeCADGui
 from PySide import QtGui
-import Part, math, common
+import Draft, Part, math, common
 
 class CompartmentFeature:
     def __init__(self, obj):
@@ -18,6 +18,10 @@ class CompartmentFeature:
         for name in ["FingerFront","FingerBack","FingerLeft","FingerRight","FingerBottom"]:
             obj.addProperty("App::PropertyBool", name, "FingerHoles", name)
             setattr(obj,name,False)
+        
+       # Label options
+        obj.addProperty("App::PropertyString", "LabelText", "Label", "Text label for this compartment").LabelText = ""
+        obj.addProperty("App::PropertyFile", "FontFile", "Label", "Path to TTF font file").FontFile = ""
         
         self.ensureProperties(obj)
 
@@ -101,6 +105,25 @@ class CompartmentFeature:
         if obj.FingerRight: shapes.append(Part.makeCylinder(r,h,FreeCAD.Vector(shape.BoundBox.XMax,cy,z-one)))
         if obj.FingerBottom:shapes.append(Part.makeCylinder(r,h,FreeCAD.Vector(cx,cy,-one)))
         
+        # ----- add label engraving -----
+        if obj.LabelText and obj.FontFile:
+            #TODO: auto size label to fit
+            bb = shape.BoundBox
+            if bb.XLength > bb.YLength:
+                size = bb.XLength / (len(obj.LabelText) * 1.5)
+            else:
+                size = bb.YLength / (len(obj.LabelText) * 1.5)
+            try:
+                shapestring = Draft.make_shapestring(obj.LabelText, obj.FontFile, size)
+                txt_extrude = Part.Compound(shapestring.Shape.Wires).extrude(FreeCAD.Vector(0,0,obj.Depth))
+                txt_extrude.translate(FreeCAD.Vector(
+                    bb.XMin + (bb.XLength - txt_extrude.BoundBox.XLength)/2,
+                    bb.YMin + (bb.YLength - txt_extrude.BoundBox.YLength)/2,
+                    obj.ZOffset - obj.Depth - one/2))  # just below bottom
+                shapes.append(txt_extrude)
+            except Exception as e:
+                FreeCAD.Console.PrintError(f"Label engraving failed: {e}\n")
+
         obj.Shape = Part.makeCompound(shapes)
 
 # ---------------- TaskPanel ----------------
@@ -135,8 +158,27 @@ class CompartmentTaskPanel:
         fl.addRow(self.chkBottom)
         self.layout.addWidget(fGroup)
 
+        # label group
+        lGroup = QtGui.QGroupBox("Label")
+        fl = QtGui.QFormLayout(lGroup)
+        self.labelEdit = QtGui.QLineEdit(self.obj.LabelText)
+        self.fontEdit = QtGui.QLineEdit(self.obj.FontFile)
+        self.fontButton = QtGui.QPushButton("Browse...")
+        fontLayout = QtGui.QHBoxLayout()
+        fontLayout.addWidget(self.fontEdit)
+        fontLayout.addWidget(self.fontButton)
+        fl.addRow("Text:", self.labelEdit)
+        fl.addRow("Font:", fontLayout)
+        self.fontButton.clicked.connect(self.chooseFont)
+        self.layout.addWidget(lGroup)
+
         self.typeCombo.currentIndexChanged.connect(self.rebuildForm)
         self.rebuildForm()
+
+    def chooseFont(self):
+        fn, _ = QtGui.QFileDialog.getOpenFileName(None, "Select Font", "", "Fonts (*.ttf *.otf)")
+        if fn:
+            self.fontEdit.setText(fn)
 
     def clearLayout(self,layout):
         while layout.count():
@@ -221,7 +263,11 @@ class CompartmentTaskPanel:
         self.obj.FingerLeft   = self.chkLeft.isChecked()
         self.obj.FingerRight  = self.chkRight.isChecked()
         self.obj.FingerBottom = self.chkBottom.isChecked()
-
+        
+        # label values
+        self.obj.LabelText  = self.labelEdit.text()
+        self.obj.FontFile   = self.fontEdit.text()
+        
         FreeCAD.ActiveDocument.recompute()
         return True
 
