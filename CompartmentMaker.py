@@ -9,7 +9,7 @@ class CompartmentFeature:
                         "Compartment shape type").ShapeType = ["Box","Cylinder","Polygon","Box2"]
         obj.ShapeType = "Box"
         
-        obj.addProperty("App::PropertyLength", "Depth", "Compartment", "Depth").Depth = 20.0
+        obj.addProperty("App::PropertyLength", "Depth", "Compartment", "Depth").Depth = 30.0
         obj.addProperty("App::PropertyLength", "ZOffset", "Compartment", "Z offset").ZOffset = 0.0
         
         # common to all: finger holes
@@ -31,8 +31,8 @@ class CompartmentFeature:
                 obj.removeProperty(pname)
         
         if st == "Box":
-            obj.addProperty("App::PropertyLength","Length","Box","Length").Length=40
-            obj.addProperty("App::PropertyLength","Width","Box","Width").Width=30
+            obj.addProperty("App::PropertyLength","Length","Box","Length").Length=91
+            obj.addProperty("App::PropertyLength","Width","Box","Width").Width=64.5
             obj.addProperty("App::PropertyLength","SideFilletRadius","Box","Side fillet radius").SideFilletRadius=2
             obj.addProperty("App::PropertyLength","BottomFilletRadius","Box","Bottom fillet radius").BottomFilletRadius=0
         
@@ -60,18 +60,18 @@ class CompartmentFeature:
         st = obj.ShapeType
         
         if st == "Box":
-            shape = Part.makeBox(obj.Length,obj.Width,obj.Depth,FreeCAD.Vector(0,0,z))
+            shape = Part.makeBox(obj.Length,obj.Width,2*obj.Depth,FreeCAD.Vector(0,0,z))
             if obj.SideFilletRadius:
                 shape = common.fillet_edges(shape,obj.SideFilletRadius,"sides")
             if obj.BottomFilletRadius:
                 shape = common.fillet_edges(shape,obj.BottomFilletRadius,"bottom")
         elif st == "Box2":
-            shape = Part.makeBox(obj.Length,obj.Width,obj.Depth,FreeCAD.Vector(0,0,z))
+            shape = Part.makeBox(obj.Length,obj.Width,2*obj.Depth,FreeCAD.Vector(0,0,z))
             if obj.BottomFilletRadius:
                 shape = common.fillet_edges(shape,obj.BottomFilletRadius,"bottom2")
         
         elif st == "Cylinder":
-            shape = Part.makeCylinder(obj.Radius,obj.Depth,FreeCAD.Vector(obj.Radius,obj.Radius,z))
+            shape = Part.makeCylinder(obj.Radius,2*obj.Depth,FreeCAD.Vector(obj.Radius,obj.Radius,z))
             if obj.BottomFilletRadius:
                 shape = common.fillet_edges(shape,obj.BottomFilletRadius,"bottom")
         
@@ -81,7 +81,7 @@ class CompartmentFeature:
                 math.sin(2*math.pi*i/obj.Sides)*obj.Radius,0)
                 for i in range(obj.Sides+1)])
             face = Part.Face(poly)
-            shape = face.extrude(FreeCAD.Vector(0,0,obj.Depth))
+            shape = face.extrude(FreeCAD.Vector(0,0,2*obj.Depth))
             shape.translate(FreeCAD.Vector(obj.Radius,obj.Radius,z))
             if obj.SideFilletRadius:
                 shape = common.fillet_edges(shape,obj.SideFilletRadius,"sides")
@@ -213,7 +213,7 @@ class CompartmentTaskPanel:
         if st=="Polygon":
             self.obj.Radius=self.radSpin.value()
             self.obj.Sides=self.sSpin.value()
-
+        
         # finger hole values
         self.obj.FingerRadius = self.rSpin.value()
         self.obj.FingerFront  = self.chkFront.isChecked()
