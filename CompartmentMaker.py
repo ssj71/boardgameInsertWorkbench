@@ -107,19 +107,25 @@ class CompartmentFeature:
         
         # ----- add label engraving -----
         if obj.LabelText and obj.FontFile:
-            #TODO: auto size label to fit
+            #size the label
             bb = shape.BoundBox
             if bb.XLength > bb.YLength:
-                size = bb.XLength / (len(obj.LabelText) * 1.5)
+                size = bb.XLength / (len(obj.LabelText) * 1.3)
             else:
-                size = bb.YLength / (len(obj.LabelText) * 1.5)
+                size = bb.YLength / (len(obj.LabelText) * 1.3)
+            if size > bb.XLength: size = bb.XLength * .9
+            if size > bb.YLength: size = bb.YLength * .9
             try:
                 shapestring = Draft.make_shapestring(obj.LabelText, obj.FontFile, size)
                 faces = [Part.Face(wire) for wire in shapestring.Shape.Wires if wire.isClosed()]
                 txt_extrude = Part.Compound(faces).extrude(FreeCAD.Vector(0,0,obj.Depth))
+                xl = txt_extrude.BoundBox.XLength
+                yl = txt_extrude.BoundBox.YLength
+                if bb.YLength > bb.XLength:
+                    txt_extrude.rotate(FreeCAD.Vector(xl/2,yl/2,0), FreeCAD.Vector(0,0,1), 90)
                 txt_extrude.translate(FreeCAD.Vector(
-                    bb.XMin + (bb.XLength - txt_extrude.BoundBox.XLength)/2,
-                    bb.YMin + (bb.YLength - txt_extrude.BoundBox.YLength)/2,
+                    bb.XMin + (bb.XLength - xl)/2,
+                    bb.YMin + (bb.YLength - yl)/2,
                     obj.ZOffset - obj.Depth - one/2))  # just below bottom
                 FreeCAD.ActiveDocument.removeObject(shapestring.Name)
                 shapes.append(txt_extrude)
