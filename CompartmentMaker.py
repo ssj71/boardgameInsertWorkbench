@@ -1,6 +1,6 @@
 import FreeCAD, FreeCADGui
 from PySide import QtGui
-import Draft, Part, math, common
+import Draft, importSVG, Part, math, common
 
 class CompartmentFeature:
     def __init__(self, obj):
@@ -14,14 +14,14 @@ class CompartmentFeature:
         
         # common to all: finger holes
         obj.addProperty("App::PropertyLength", "FingerRadius", "FingerHoles", "Finger hole radius").FingerRadius = 10.0
-        #obj.addProperty("App::PropertyBool", "FingerFront", "FingerHoles", "Front").FingerRadius = 10.0
         for name in ["FingerFront","FingerBack","FingerLeft","FingerRight","FingerBottom"]:
             obj.addProperty("App::PropertyBool", name, "FingerHoles", name)
             setattr(obj,name,False)
         
        # Label options
         obj.addProperty("App::PropertyString", "LabelText", "Label", "Text label for this compartment").LabelText = ""
-        obj.addProperty("App::PropertyFile", "FontFile", "Label", "Path to TTF font file").FontFile = ""
+        obj.addProperty("App::PropertyFile", "FontFile", "Label", "Path to TTF/OTF font file").FontFile = ""
+        obj.addProperty("App::PropertyFile", "SVGFile", "Label", "Path to SVG font file").SVGFile = ""
         
         self.ensureProperties(obj)
 
@@ -106,7 +106,33 @@ class CompartmentFeature:
         if obj.FingerBottom:shapes.append(Part.makeCylinder(r,h,FreeCAD.Vector(cx,cy,-one)))
         
         # ----- add label engraving -----
-        if obj.LabelText and obj.FontFile:
+        if obj.SVGFile:
+            try:
+                svgdoc = importSVG.open(obj.SVGFile)
+                svgshapes = [s.Shape for s in svgdoc.Objects if hasattr(s,"Shape") and not s.Shape.isNull()]
+                FreeCAD.closeDocument(svgdoc.Name)
+                if svgshapes:
+                    faces = [Part.Face(wire) for wire in svgshapes if wire.isClosed()]
+                    if len(faces)==0:
+                        faces = svgshapes
+                    svg_extrude = Part.Compound(faces).extrude(FreeCAD.Vector(0,0,obj.Depth))
+                    bb = shape.BoundBox
+                    xl = svg_extrude.BoundBox.XLength
+                    yl = svg_extrude.BoundBox.YLength
+                    if bb.YLength > bb.XLength and xl > yl or yl > xl:
+                        svg_extrude.rotate(FreeCAD.Vector(0,0,0), FreeCAD.Vector(0,0,1), 90)
+                        xl,yl = yl,xl
+                    svg_extrude.translate(FreeCAD.Vector(-svg_extrude.BoundBox.XMin,
+                                                         -svg_extrude.BoundBox.YMin,
+                                                         -svg_extrude.BoundBox.ZMin))
+                    svg_extrude.translate(FreeCAD.Vector(
+                        bb.XMin + (bb.XLength - xl)/2,
+                        bb.YMin + (bb.YLength - yl)/2,
+                        obj.ZOffset - obj.Depth - one/2))  # just below bottom
+                    shapes.append(svg_extrude)
+            except Exception as e:
+                FreeCAD.Console.PrintError(f"SVG label engraving failed: {e}\n")
+        elif obj.LabelText and obj.FontFile:
             #size the label
             bb = shape.BoundBox
             if bb.XLength > bb.YLength:
@@ -175,9 +201,16 @@ class CompartmentTaskPanel:
         fontLayout = QtGui.QHBoxLayout()
         fontLayout.addWidget(self.fontEdit)
         fontLayout.addWidget(self.fontButton)
+        self.svgEdit = QtGui.QLineEdit(self.obj.SVGFile)
+        self.svgButton = QtGui.QPushButton("Browse...")
+        svgLayout = QtGui.QHBoxLayout()
+        svgLayout.addWidget(self.svgEdit)
+        svgLayout.addWidget(self.svgButton)
         fl.addRow("Text:", self.labelEdit)
         fl.addRow("Font:", fontLayout)
+        fl.addRow("SVG:", svgLayout)
         self.fontButton.clicked.connect(self.chooseFont)
+        self.svgButton.clicked.connect(self.chooseSVG)
         self.layout.addWidget(lGroup)
 
         self.typeCombo.currentIndexChanged.connect(self.rebuildForm)
@@ -187,6 +220,10 @@ class CompartmentTaskPanel:
         fn, _ = QtGui.QFileDialog.getOpenFileName(None, "Select Font", "", "Fonts (*.ttf *.otf)")
         if fn:
             self.fontEdit.setText(fn)
+    def chooseSVG(self):
+        fn, _ = QtGui.QFileDialog.getOpenFileName(None, "Select SVG Image", "", "svg files (*.svg)")
+        if fn:
+            self.svgEdit.setText(fn)
 
     def clearLayout(self,layout):
         while layout.count():
@@ -275,6 +312,7 @@ class CompartmentTaskPanel:
         # label values
         self.obj.LabelText  = self.labelEdit.text()
         self.obj.FontFile   = self.fontEdit.text()
+        self.obj.SVGFile    = self.svgEdit.text()
         
         FreeCAD.ActiveDocument.recompute()
         return True
