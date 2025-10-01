@@ -107,56 +107,15 @@ class CompartmentFeature:
         
         # ----- add label engraving -----
         if obj.SVGFile:
-            try:
-                svgdoc = importSVG.open(obj.SVGFile)
-                svgshapes = [s.Shape for s in svgdoc.Objects if hasattr(s,"Shape") and not s.Shape.isNull()]
-                FreeCAD.closeDocument(svgdoc.Name)
-                if svgshapes:
-                    faces = [Part.Face(wire) for wire in svgshapes if wire.isClosed()]
-                    if len(faces)==0:
-                        faces = svgshapes
-                    svg_extrude = Part.Compound(faces).extrude(FreeCAD.Vector(0,0,obj.Depth))
-                    bb = shape.BoundBox
-                    xl = svg_extrude.BoundBox.XLength
-                    yl = svg_extrude.BoundBox.YLength
-                    if bb.YLength > bb.XLength and xl > yl or yl > xl:
-                        svg_extrude.rotate(FreeCAD.Vector(0,0,0), FreeCAD.Vector(0,0,1), 90)
-                        xl,yl = yl,xl
-                    svg_extrude.translate(FreeCAD.Vector(-svg_extrude.BoundBox.XMin,
-                                                         -svg_extrude.BoundBox.YMin,
-                                                         -svg_extrude.BoundBox.ZMin))
-                    svg_extrude.translate(FreeCAD.Vector(
-                        bb.XMin + (bb.XLength - xl)/2,
-                        bb.YMin + (bb.YLength - yl)/2,
-                        obj.ZOffset - obj.Depth - one/2))  # just below bottom
-                    shapes.append(svg_extrude)
-            except Exception as e:
-                FreeCAD.Console.PrintError(f"SVG label engraving failed: {e}\n")
-        elif obj.LabelText and obj.FontFile:
-            #size the label
             bb = shape.BoundBox
-            if bb.XLength > bb.YLength:
-                size = bb.XLength / (len(obj.LabelText) * 1.3)
-            else:
-                size = bb.YLength / (len(obj.LabelText) * 1.3)
-            if size > bb.XLength: size = bb.XLength * .9
-            if size > bb.YLength: size = bb.YLength * .9
-            try:
-                shapestring = Draft.make_shapestring(obj.LabelText, obj.FontFile, size)
-                faces = [Part.Face(wire) for wire in shapestring.Shape.Wires if wire.isClosed()]
-                txt_extrude = Part.Compound(faces).extrude(FreeCAD.Vector(0,0,obj.Depth))
-                xl = txt_extrude.BoundBox.XLength
-                yl = txt_extrude.BoundBox.YLength
-                if bb.YLength > bb.XLength:
-                    txt_extrude.rotate(FreeCAD.Vector(xl/2,yl/2,0), FreeCAD.Vector(0,0,1), 90)
-                txt_extrude.translate(FreeCAD.Vector(
-                    bb.XMin + (bb.XLength - xl)/2,
-                    bb.YMin + (bb.YLength - yl)/2,
-                    obj.ZOffset - obj.Depth - one/2))  # just below bottom
-                FreeCAD.ActiveDocument.removeObject(shapestring.Name)
-                shapes.append(txt_extrude)
-            except Exception as e:
-                FreeCAD.Console.PrintError(f"Label engraving failed: {e}\n")
+            label = common.svg_label(obj.SVGFile, obj.Depth)
+            label = common.set_on_face(FreeCAD.Vector(bb.XMin, bb.YMin, bb.ZMin), FreeCAD.Vector(bb.XMax, bb.YMax, bb.ZMin), label, -.5)
+            shapes.append(label)
+        elif obj.LabelText and obj.FontFile:
+            bb = shape.BoundBox
+            label = common.text_label(FreeCAD.Vector(bb.XMin, bb.YMin, bb.ZMin), FreeCAD.Vector(bb.XMax, bb.YMax, bb.ZMin), obj.LabelText, obj.FontFile, obj.Depth)
+            label = common.set_on_face(FreeCAD.Vector(bb.XMin, bb.YMin, bb.ZMin), FreeCAD.Vector(bb.XMax, bb.YMax, bb.ZMin), label, -.5)
+            shapes.append(label)
 
         obj.Shape = Part.makeCompound(shapes)
 
