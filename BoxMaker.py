@@ -6,9 +6,61 @@ import common
 
 RIM_WIDTH = FreeCAD.Units.Quantity("1 mm")
 
-class BoxFeature:
+# ---------------- Lid ----------------
+def create_lid(L, W, H, clearance):
+    """
+    Creates a lid for the hollow box with a beveled base for a secure fit.
+    
+    Args:
+        params (BoxParameters): The parameters from the dialog.
+        tool (Boolean): Whether to size the lid as a cutting tool.
+    """
+    # Create the main body of the lid
+    #currently the rim that holds the lid in place is 1mm wide
+    lid_l = L - 1*RIM_WIDTH - 2*clearance
+    lid_w = W - 2*RIM_WIDTH - 2*clearance
+    lid_h = H
+    
+    lid_body = Part.makeBox(lid_l, lid_w, lid_h)
+    
+    print("making lid")
+    # Chamfer the top edges to create the beveled edge
+    chamfer_d1 = H - FreeCAD.Units.Quantity(".01 mm")
+    chamfer_d2 = chamfer_d1 / math.sqrt(3)
+    
+    bevel_edges_to_chamfer = common.get_edges(lid_body, "top")
+    try:
+        chamfered_bevel = lid_body.makeChamfer(chamfer_d1, chamfer_d2, bevel_edges_to_chamfer[1:])
+    except Exception as e:
+        FreeCAD.Console.PrintError("Failed to create chamfered bevel on the lid. Clearance may be too large.")
+        print(str(e))
+        return
+    
+    print(" lid success")
+    return chamfered_bevel
+
+class LidFeature:
     def __init__(self, obj):
         obj.Proxy = self
+        obj.addProperty("App::PropertyLength", "Length", "Size", "Length").Length = 95.0
+        obj.addProperty("App::PropertyLength", "Width", "Size", "Width").Width = 68.5
+        obj.addProperty("App::PropertyLength", "Thickness", "Size", "Thickness").Thickness = 34.0
+        obj.addProperty("App::PropertyLength", "Clearance", "Clearance", "Clearance").Clearance = .1
+
+    def execute(self, obj):
+        obj.Shape = create_lid(obj.Length, obj.Width, obj.Thickness, obj.Clearance)
+        if obj.Shape is None:
+            FreeCAD.Console.PrintError("Lid shape is None. Check parameters.\n")
+
+def get_lid(obj):
+    for child in obj.Group:
+        if child.Name == "Lid":
+            return child
+    return None
+
+# ---------------- Main Box ----------------
+class BoxFeature:
+    def __init__(self, obj):
         # Add parametric properties
         obj.addProperty("App::PropertyLength", "Length", "Box", "Outer length").Length = 95.0
         obj.addProperty("App::PropertyLength", "Width", "Box", "Outer width").Width = 68.5
@@ -19,12 +71,27 @@ class BoxFeature:
         obj.addProperty("App::PropertyLength", "FilletRadius", "Options", "Fillet radius").FilletRadius = 3.0
         obj.addProperty("App::PropertyBool", "FilletTop", "Options", "Fillet top").FilletTop = True
         obj.addProperty("App::PropertyLength", "TopFilletRadius", "Options", "Top fillet radius").TopFilletRadius = 1.0
-        obj.addProperty("App::PropertyBool", "Lid", "Options", "Create lid").Lid = True
+        obj.addProperty("App::PropertyBool", "HasLid", "Options", "Create lid").HasLid = True
         obj.addProperty("App::PropertyLength", "LidThickness", "Options", "Lid thickness").LidThickness = 2.0
         obj.addProperty("App::PropertyLength", "Clearance", "Options", "Clearance for lid").Clearance = 0.1
         obj.addProperty("App::PropertyLinkList", "Compartments", "Box", "Linked compartments")
+        obj.addProperty("App::PropertyLinkList", "BoxLabels", "Box", "Linked labels")
+
+    def onChanged(self, obj, prop):
+        #TODO: get lid
+        lid = get_lid(obj)
+        if lid and prop in ["Length", "Width", "Lid", "LidThickness", "Clearance"]:
+            lid.Length = obj.Length
+            lid.Width = obj.Width
+            lid.Thickness = obj.LidThickness
+            lid.Clearance = obj.Clearance
+            print("change " + prop)
+            if obj.HasLid:
+                #TODO: add or remove lid from document based on checkbox
+                pass
 
     def execute(self, obj):
+        print("build box")
         # Rebuild geometry based on properties
         # Create the outer box
         box = Part.makeBox(obj.Length, obj.Width, obj.Height)
@@ -37,15 +104,14 @@ class BoxFeature:
             box = common.fillet_edges(box, obj.TopFilletRadius, "top")
         
         # Add the lid if enabled
-        lid = None
-        if obj.Lid:
+        #lid = None
+        if obj.HasLid:
             gap = FreeCAD.Units.Quantity("2 mm")
-            lid = create_lid(obj.Length, obj.Width, obj.LidThickness, obj.Clearance)
             cutter = create_lid(obj.Length, obj.Width, obj.LidThickness, FreeCAD.Units.Quantity("0 mm"))
-            if lid is None or cutter is None:
+            if cutter is None:
                 FreeCAD.Console.PrintError("Failed to create lid. Check clearance and dimensions.\n")
                 return
-            lid.translate(FreeCAD.Vector(0, obj.Width + gap, 0))
+            #lid.translate(FreeCAD.Vector(0, obj.Width + gap, 0))
             cutter.translate(FreeCAD.Vector(0, RIM_WIDTH, obj.Height - obj.LidThickness))
             box = box.cut(cutter)
         
@@ -53,9 +119,9 @@ class BoxFeature:
         for comp in obj.Compartments:
             if comp.Shape:
                 box = box.cut(comp.Shape)
-        if lid:
-            box = Part.Compound([box,lid])
         obj.Shape = box
+        if obj.Shape is None:
+            FreeCAD.Console.PrintError("Box shape is None. Check parameters.\n")
 
 class BoxTaskPanel:
     def __init__(self, obj):
@@ -136,7 +202,7 @@ class BoxTaskPanel:
         lidOptionsLayout = QtGui.QGridLayout(lidOptionsGroupBox)
         
         self.lidCheck = QtGui.QCheckBox("Create a lid", form)
-        self.lidCheck.setChecked(obj.Lid)
+        self.lidCheck.setChecked(obj.HasLid)
         lidOptionsLayout.addWidget(self.lidCheck, 0, 0)
         
         lidThicknessLabel = QtGui.QLabel("Lid Thickness:", form)
@@ -152,7 +218,7 @@ class BoxTaskPanel:
         lidOptionsLayout.addWidget(self.clearanceEdit, 2, 1)
         
         layout.addWidget(lidOptionsGroupBox)
-
+        
         self.form = form
         self.obj = obj
 
@@ -168,46 +234,25 @@ class BoxTaskPanel:
         self.obj.TopFilletRadius = self.outerTopFilletRadiusEdit.value()
         self.obj.Chamfer = self.chamferCheck.isChecked()
         self.obj.ChamferSize = self.chamferSizeEdit.value()
-        self.obj.Lid = self.lidCheck.isChecked()
+        self.obj.HasLid = self.lidCheck.isChecked()
         self.obj.LidThickness = self.lidThicknessEdit.value()
         self.obj.Clearance = self.clearanceEdit.value()
+        
+        #and children
+        lid = get_lid(self.obj)
+        if lid:
+            lid.Length = self.obj.Length
+            lid.Width = self.obj.Width
+            lid.Thickness = self.obj.LidThickness
+            lid.Clearance = self.obj.Clearance
         FreeCAD.ActiveDocument.recompute()
         return True
 
     def reject(self):
         return True
 
-def create_lid(L, W, H, clearance):
-    """
-    Creates a lid for the hollow box with a beveled base for a secure fit.
-    
-    Args:
-        params (BoxParameters): The parameters from the dialog.
-        tool (Boolean): Whether to size the lid as a cutting tool.
-    """
-    # Create the main body of the lid
-    #currently the rim that holds the lid in place is 1mm wide
-    lid_l = L - 1*RIM_WIDTH - 2*clearance
-    lid_w = W - 2*RIM_WIDTH - 2*clearance
-    lid_h = H
-    
-    lid_body = Part.makeBox(lid_l, lid_w, lid_h)
-    
-    # Chamfer the top edges to create the beveled edge
-    chamfer_d1 = H - FreeCAD.Units.Quantity(".01 mm")
-    chamfer_d2 = chamfer_d1 / math.sqrt(3)
-    
-    bevel_edges_to_chamfer = common.get_edges(lid_body, "top")
-    try:
-        chamfered_bevel = lid_body.makeChamfer(chamfer_d1, chamfer_d2, bevel_edges_to_chamfer[1:])
-    except Exception as e:
-        FreeCAD.Console.PrintError("Failed to create chamfered bevel on the lid. Clearance may be too large.")
-        print(str(e))
-        return
-    
-    return chamfered_bevel
 
-class ViewProviderBox:
+class ViewProviderBGIW:
     def __init__(self, vobj):
         vobj.Proxy = self
 
@@ -231,11 +276,13 @@ class BoxMaker:
 
     def Activated(self):
         doc = FreeCAD.ActiveDocument or FreeCAD.newDocument()
-        obj = doc.addObject("Part::FeaturePython", "InsertBox")
-        BoxFeature(obj)
-        obj.ViewObject.Proxy = ViewProviderBox(obj.ViewObject)
+        box = doc.addObject("App::Part", "InsertBox")
+        BoxFeature(box)
+        lid = box.newObject("Part::FeaturePython", "Lid")
+        LidFeature(lid)
+        lid.ViewObject.Proxy = ViewProviderBGIW(lid.ViewObject)
         doc.recompute()
-        FreeCADGui.Control.showDialog(BoxTaskPanel(obj))
+        FreeCADGui.Control.showDialog(BoxTaskPanel(box))
         FreeCADGui.SendMsgToActiveView("ViewFit")
 
 
