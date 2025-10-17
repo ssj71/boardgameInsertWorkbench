@@ -301,21 +301,29 @@ class AddCompartment:
         return {'MenuText': 'Add Compartment','ToolTip': 'Add a parametric compartment','Pixmap': ''}
 
     def Activated(self):
-        doc = FreeCAD.ActiveDocument or FreeCAD.newDocument()
+        doc = FreeCAD.ActiveDocument
         sel = FreeCADGui.Selection.getSelection()
-        if not sel or not hasattr(sel[0].Proxy,"__class__") or sel[0].Proxy.__class__.__name__!="BoxFeature":
-            FreeCAD.Console.PrintError("Select a Box to add a compartment.\n"); return
-        parent = sel[0]
+        if not sel or not hasattr(sel[0].Proxy,"__class__") or (sel[0].Proxy.__class__.__name__!="BoxFeature" and sel[0].Proxy.__class__.__name__!="InsertFeature"):
+            FreeCAD.Console.PrintError("Select an insert box to add a compartment.\n"); return
+        if sel[0].Proxy.__class__.__name__=="InsertFeature":
+            # get the box inside the insert
+            for obj in sel[0].Group:
+                if obj.Proxy.__class__.__name__=="BoxFeature":
+                    parent = obj
+        else:
+            # they selected the box directly
+            parent = sel[0]
         obj = doc.addObject("Part::FeaturePython","Compartment")
         CompartmentFeature(obj)
+        #add it to the insert as a sibling to the box
+        parent.InList[0].addObject(obj)
         obj.ViewObject.Proxy = ViewProviderCompartment(obj.ViewObject)
-        obj.Placement = parent.Placement
         obj.Placement.Base.x += 2
         obj.Placement.Base.y += 2
         obj.Visibility = False
         # Link compartment to parent
-        parent.Compartments = [*parent.Compartments,obj]
-        obj.ZOffset = parent.Height - parent.LidThickness if parent.Lid else 0
+        parent.Compartments = [*parent.Compartments, obj]
+        obj.ZOffset = parent.Height - parent.LidThickness
         doc.recompute()
         FreeCADGui.Control.showDialog(CompartmentTaskPanel(obj))
         FreeCADGui.SendMsgToActiveView("ViewFit")

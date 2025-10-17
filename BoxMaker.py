@@ -162,13 +162,14 @@ class InsertFeature:
 
     def onChanged(self, obj, prop):
         lid = get_lid(obj)
-        if hasattr(obj, "HasLid") and hasattr(obj, "Clearance"):
+        if hasattr(obj, "HasLid") and hasattr(obj, "Clearance"): #clearance prevents adding the lid before those props exist
             if lid and obj.HasLid == False:
                 print("Removing lid ch")
                 FreeCAD.ActiveDocument.removeObject(lid.Name)
                 lid = None
             elif lid == None and obj.HasLid:
                 add_lid(obj)
+        #TODO: update compartments zoffsets
         if lid and prop in ["Length", "Width", "Lid", "LidThickness", "Clearance"]:
             lid.Length = obj.Length
             lid.Width = obj.Width
