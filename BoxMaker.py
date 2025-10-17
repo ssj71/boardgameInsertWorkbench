@@ -8,7 +8,7 @@ RIM_WIDTH = FreeCAD.Units.Quantity("1 mm")
 
 def create_lid(L, W, H, clearance):
     """
-    Creates a lid for the hollow box with a beveled base for a secure fit.
+    Creates a lid  shape
     
     Args:
         params (BoxParameters): The parameters from the dialog.
@@ -36,6 +36,23 @@ def create_lid(L, W, H, clearance):
     
     return chamfered_bevel
 
+def add_lid(obj):
+    """
+    adds the lid object to the insert
+    
+    Args:
+        insert (InsertFeature): parent object
+    """
+    lid = FreeCAD.ActiveDocument.addObject("Part::FeaturePython", "Lid")
+    LidFeature(lid)
+    obj.addObject(lid)
+    lid.Length = obj.Length
+    lid.Width = obj.Width
+    lid.Thickness = obj.LidThickness
+    lid.Clearance = obj.Clearance
+    lid.Placement.Base.x = obj.Length + FreeCAD.Units.Quantity("2 mm")
+    lid.touch()
+
 def get_lid(obj):
     for child in obj.Group:
         if child.Name == "Lid":
@@ -53,9 +70,6 @@ class ViewProviderBGIW:
         vobj.Proxy = self
 
     def setEdit(self, vobj, mode):
-        #if mode == 0:
-        #    #FreeCADGui.Control.showDialog(BoxTaskPanel(vobj.Object))
-        #    return True
         return None
 
     def unsetEdit(self, vobj, mode):
@@ -112,14 +126,11 @@ class BoxFeature:
             box = common.fillet_edges(box, obj.TopFilletRadius, "top")
         
         # Add the lid if enabled
-        #lid = None
         if obj.LidThickness > 0:
-            gap = FreeCAD.Units.Quantity("2 mm")
             cutter = create_lid(obj.Length, obj.Width, obj.LidThickness, FreeCAD.Units.Quantity("0 mm"))
             if cutter is None:
                 FreeCAD.Console.PrintError("Failed to create lid. Check clearance and dimensions.\n")
                 return
-            #lid.translate(FreeCAD.Vector(0, obj.Width + gap, 0))
             cutter.translate(FreeCAD.Vector(0, RIM_WIDTH, obj.Height - obj.LidThickness))
             box = box.cut(cutter)
         
@@ -150,10 +161,14 @@ class InsertFeature:
         obj.addProperty("App::PropertyLength", "Clearance", "Options", "Clearance for lid").Clearance = 0.1
 
     def onChanged(self, obj, prop):
-        if obj.HasLid:
-            #TODO: add or remove lid from document based on checkbox
-            pass
         lid = get_lid(obj)
+        if hasattr(obj, "HasLid") and hasattr(obj, "Clearance"):
+            if lid and obj.HasLid == False:
+                print("Removing lid ch")
+                FreeCAD.ActiveDocument.removeObject(lid.Name)
+                lid = None
+            elif lid == None and obj.HasLid:
+                add_lid(obj)
         if lid and prop in ["Length", "Width", "Lid", "LidThickness", "Clearance"]:
             lid.Length = obj.Length
             lid.Width = obj.Width
@@ -295,8 +310,14 @@ class BoxTaskPanel:
         
         #and children
         lid = get_lid(self.obj)
-        if lid:
-            #TODO: add or remove lid from document based on checkbox
+        if lid and self.obj.HasLid == False:
+            print("Removing lid")
+            FreeCAD.ActiveDocument.removeObject(lid.Name)
+            lid = None
+        elif lid == None and self.obj.HasLid:
+            print("Adding lid")
+            add_lid(self.obj)
+        elif lid:
             lid.Length = self.obj.Length
             lid.Width = self.obj.Width
             lid.Thickness = self.obj.LidThickness
@@ -334,20 +355,12 @@ class BoxMaker:
 
     def Activated(self):
         doc = FreeCAD.ActiveDocument or FreeCAD.newDocument()
-        #insert = doc.addObject("Part::FeaturePython", "Insert")
         insert = doc.addObject("App::DocumentObjectGroupPython", "Insert")
         InsertFeature(insert)
-        #box = insert.newObject("Part::FeaturePython", "Box")
         box = doc.addObject("Part::FeaturePython", "Box")
         BoxFeature(box)
-        #box.ViewObject.Proxy = ViewProviderBGIW(box.ViewObject)
-        #lid = insert.newObject("Part::FeaturePython", "Lid")
-        lid = doc.addObject("Part::FeaturePython", "Lid")
-        LidFeature(lid)
-        #lid.ViewObject.Proxy = ViewProviderBGIW(lid.ViewObject)
-        #insert.Group = [box, lid]
         insert.addObject(box)
-        insert.addObject(lid)
+        #lid gets created when task panel is accepted
         doc.recompute()
         FreeCADGui.Control.showDialog(BoxTaskPanel(insert))
         FreeCADGui.SendMsgToActiveView("ViewFit")
