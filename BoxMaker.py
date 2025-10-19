@@ -36,6 +36,20 @@ def create_lid(L, W, H, clearance):
     
     return chamfered_bevel
 
+def update_compartment_zoffsets(obj):
+    """
+    updates the zoffsets of all compartments in the insert based on the box height
+    
+    Args:
+        insert (InsertFeature): parent object
+    """
+    box = get_box(obj)
+    if box is None or not hasattr(box, "Compartments"):
+        return
+    for comp in box.Compartments:
+        if hasattr(comp, "ZOffset"):
+            comp.ZOffset = box.Height - box.LidThickness
+
 def add_lid(obj):
     """
     adds the lid object to the insert
@@ -164,18 +178,20 @@ class InsertFeature:
         lid = get_lid(obj)
         if hasattr(obj, "HasLid") and hasattr(obj, "Clearance"): #clearance prevents adding the lid before those props exist
             if lid and obj.HasLid == False:
-                print("Removing lid ch")
                 FreeCAD.ActiveDocument.removeObject(lid.Name)
                 lid = None
+                update_compartment_zoffsets(obj)
             elif lid == None and obj.HasLid:
                 add_lid(obj)
+                update_compartment_zoffsets(obj)
         #TODO: update compartments zoffsets
-        if lid and prop in ["Length", "Width", "Lid", "LidThickness", "Clearance"]:
+        if lid and prop in ["Length", "Width", "HasLid", "LidThickness", "Clearance"]:
             lid.Length = obj.Length
             lid.Width = obj.Width
             lid.Thickness = obj.LidThickness
             lid.Clearance = obj.Clearance
             lid.touch()
+            update_compartment_zoffsets(obj)
         box = get_box(obj)
         if box and prop in ["Length", "Width", "Height", "Chamfer", "ChamferSize", "FilletSides", "FilletRadius", "FilletTop", "TopFilletRadius", "HasLid", "LidThickness"]:
             box.Length = obj.Length
@@ -312,12 +328,12 @@ class BoxTaskPanel:
         #and children
         lid = get_lid(self.obj)
         if lid and self.obj.HasLid == False:
-            print("Removing lid")
             FreeCAD.ActiveDocument.removeObject(lid.Name)
             lid = None
+            update_compartment_zoffsets(self.obj)
         elif lid == None and self.obj.HasLid:
-            print("Adding lid")
             add_lid(self.obj)
+            update_compartment_zoffsets(self.obj)
         elif lid:
             lid.Length = self.obj.Length
             lid.Width = self.obj.Width
