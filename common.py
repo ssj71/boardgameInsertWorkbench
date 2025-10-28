@@ -220,3 +220,7 @@ def text_label(bottomleft, topright, string, font, extrudelen):
     except Exception as e:
         FreeCAD.Console.PrintError(f"Label engraving failed: {e}\n")
 
+def default_font():
+    import os
+    workbench_dir = os.path.dirname(__file__)
+    return os.path.join(workbench_dir, "libra-serif-modern.regular.otf")

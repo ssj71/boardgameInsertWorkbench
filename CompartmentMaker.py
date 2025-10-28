@@ -20,7 +20,7 @@ class CompartmentFeature:
         
        # Label options
         obj.addProperty("App::PropertyString", "LabelText", "Label", "Text label for this compartment").LabelText = ""
-        obj.addProperty("App::PropertyFile", "FontFile", "Label", "Path to TTF/OTF font file").FontFile = ""
+        obj.addProperty("App::PropertyFile", "FontFile", "Label", "Path to TTF/OTF font file").FontFile = common.default_font()
         obj.addProperty("App::PropertyFile", "SVGFile", "Label", "Path to SVG font file").SVGFile = ""
         
         self.ensureProperties(obj)
