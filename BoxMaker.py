@@ -184,7 +184,8 @@ class InsertFeature:
             elif lid == None and obj.HasLid:
                 add_lid(obj)
                 update_compartment_zoffsets(obj)
-        #TODO: update compartments zoffsets
+        else:
+            return
         if lid and prop in ["Length", "Width", "HasLid", "LidThickness", "Clearance"]:
             lid.Length = obj.Length
             lid.Width = obj.Width

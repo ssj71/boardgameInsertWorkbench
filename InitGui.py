@@ -9,7 +9,8 @@ class BIWorkbench (FreeCADGui.Workbench):
     def Initialize(self):
         import BoxMaker
         import CompartmentMaker
-        self.appendToolbar("Boardgame Insert", ["Make_Box_Command", "Add_Compartment_Command"])
+        import LabelMaker
+        self.appendToolbar("Boardgame Insert", ["Make_Box_Command", "Add_Compartment_Command", "Add_Label_Command"])
 
     def GetClassName(self):
         return "Gui::PythonWorkbench"
