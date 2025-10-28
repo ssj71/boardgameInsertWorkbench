@@ -22,6 +22,31 @@ def get_edges(box, edge_type):
                 found_edges.append(edge)
     return found_edges
 
+def get_face(boundingbox, face_type):
+    """
+    Returns the bottom-left and top-right corner points of the specified face of a bounding box.
+    Args:
+        boundingbox (Part.BoundBox): The bounding box of the object.
+        face_type (str): The type of face ("Top", "Front", "Back", "Left", "Right").
+    """
+    bb = boundingbox
+    if face_type == "Front":
+        p1 = FreeCAD.Vector(bb.XMin, bb.YMin, bb.ZMin)
+        p2 = FreeCAD.Vector(bb.XMax, bb.YMin, bb.ZMax)
+    elif face_type == "Back":
+        p1 = FreeCAD.Vector(bb.XMin, bb.YMax, bb.ZMin)
+        p2 = FreeCAD.Vector(bb.XMax, bb.YMax, bb.ZMax)
+    elif face_type == "Left":
+        p1 = FreeCAD.Vector(bb.XMin, bb.YMin, bb.ZMin)
+        p2 = FreeCAD.Vector(bb.XMin, bb.YMax, bb.ZMax)
+    elif face_type == "Right":
+        p1 = FreeCAD.Vector(bb.XMax, bb.YMin, bb.ZMin)
+        p2 = FreeCAD.Vector(bb.XMax, bb.YMax, bb.ZMax)
+    else:  # Top
+        p1 = FreeCAD.Vector(bb.XMin, bb.YMin, bb.ZMax)
+        p2 = FreeCAD.Vector(bb.XMax, bb.YMax, bb.ZMax)
+    return p1, p2
+
 def fillet_edges(box, radius, edge_type):
     """
     Applies a fillet to a list of edges on a given Part.Shape based on a type.
@@ -101,6 +126,14 @@ def find_plane(bottomleft, topright):
         return None, None
 
 def getlh(bottomleft, topright):
+    """
+    get the length and width of a rectangle based on 2 corners
+    the rectangle must be parallel to the cardinal axes.
+
+    Args:
+        bottomleft (FreeCAD.Vector): The bottom-left corner of the rectangle
+        topright (FreeCAD.Vector): The top-right corner of the rectangle
+    """
     normal = find_plane(bottomleft, topright)
     l = FreeCAD.Vector(topright.y - bottomleft.y,
                        topright.x - bottomleft.x,
@@ -125,12 +158,14 @@ def set_on_face(bottomleft, topright, shape, offset):
     xl = shape.BoundBox.XLength
     yl = shape.BoundBox.YLength
     print(normal, l,h,xl,yl)
+    if hasattr(offset, "Value"):
+        offset = offset.Value
     #first rotate to match the aspect ratio
     if h > l and xl > yl or yl > xl:
         shape.rotate(FreeCAD.Vector(0,0,0), FreeCAD.Vector(0,0,1), 90)
         xl,yl = yl,xl
     #now rotate to the correct face
-    m = FreeCAD.Matrix(FreeCAD.Vector(1,0,1), #each vector is a column
+    m = FreeCAD.Matrix(FreeCAD.Vector(1,1,1), #each vector is a column
                        FreeCAD.Vector(1,0,0),
                        FreeCAD.Vector(0,0,0),
                        FreeCAD.Vector(0,0,0))
@@ -140,7 +175,7 @@ def set_on_face(bottomleft, topright, shape, offset):
                                    -shape.BoundBox.ZMin))
     rot = m*normal
     if rot.Length > 0:
-        shape.rotate(FreeCAD.Vector(0,0,0), rot, 90)
+        shape.rotate(FreeCAD.Vector(0,0,0), rot, 75 + 15*rot.Length**2)
     
     #now move centered on the face, with the specified offset
     bl = bottomleft
