@@ -107,20 +107,23 @@ def find_plane(bottomleft, topright):
     if math.isclose(bottomleft.x, topright.x):
         # YZ plane
         if bottomleft.y > topright.y:
-            # normal points outwards
-            return FreeCAD.Vector(-1,0,0)
-        return FreeCAD.Vector(1,0,0)
+            # left side
+            return FreeCAD.Vector(1,0,0)
+        #right side
+        return FreeCAD.Vector(-1,0,0)
     elif math.isclose(bottomleft.y, topright.y):
         # XZ plane
         if bottomleft.x > topright.x:
-            # normal points outwards
-            return FreeCAD.Vector(0,-1,0)
-        return FreeCAD.Vector(0,1,0)
+            # back side
+            return FreeCAD.Vector(0,1,0)
+        #front side
+        return FreeCAD.Vector(0,-1,0)
     elif math.isclose(bottomleft.z, topright.z):
         # XY plane
         if bottomleft.x > topright.x:
-            # normal points outwards
+            # bottom side
             return FreeCAD.Vector(0,0,-1)
+        #top side
         return FreeCAD.Vector(0,0,1)
     else:
         return None, None
@@ -135,11 +138,11 @@ def getlh(bottomleft, topright):
         topright (FreeCAD.Vector): The top-right corner of the rectangle
     """
     normal = find_plane(bottomleft, topright)
-    l = FreeCAD.Vector(topright.y - bottomleft.y,
-                       topright.x - bottomleft.x,
+    l = FreeCAD.Vector(bottomleft.y - topright.y,
+                       bottomleft.x - topright.x,
                        topright.x - bottomleft.x)*normal
-    h = FreeCAD.Vector(topright.z - bottomleft.z,
-                       topright.z - bottomleft.z,
+    h = FreeCAD.Vector(bottomleft.z - topright.z,
+                       bottomleft.z - topright.z,
                        topright.y - bottomleft.y)*normal
     return l,h
 
@@ -161,10 +164,15 @@ def set_on_face(bottomleft, topright, shape, offset):
     if hasattr(offset, "Value"):
         offset = offset.Value
     #first rotate to match the aspect ratio
-    if h > l and xl > yl or yl > xl:
-        shape.rotate(FreeCAD.Vector(0,0,0), FreeCAD.Vector(0,0,1), 90)
+    if (h > l and xl > yl) or (l > h and yl > xl):
+        shape = shape.rotate(FreeCAD.Vector(0,0,0), FreeCAD.Vector(0,0,1), 90)
         xl,yl = yl,xl
     #now rotate to the correct face
+    #L +X, R -X, F -Y, B +Y, T +Z
+    #L 240, -.58, .58, .58
+    #R 120, .58, .58, .58
+    #F 90, 1, 0, 0
+    #B 180, 0, -.71, -.71
     m = FreeCAD.Matrix(FreeCAD.Vector(1,1,1), #each vector is a column
                        FreeCAD.Vector(1,0,0),
                        FreeCAD.Vector(0,0,0),
@@ -248,8 +256,6 @@ def text_label(bottomleft, topright, string, font, extrudelen):
         shapestring = Draft.make_shapestring(string, font, size)
         faces = [Part.Face(wire) for wire in shapestring.Shape.Wires if wire.isClosed()]
         txt_extrude = Part.Compound(faces).extrude(FreeCAD.Vector(0,0,extrudelen))
-        xl = txt_extrude.BoundBox.XLength
-        yl = txt_extrude.BoundBox.YLength
         FreeCAD.ActiveDocument.removeObject(shapestring.Name)
         return txt_extrude
     except Exception as e:

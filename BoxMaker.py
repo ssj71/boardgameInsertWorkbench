@@ -104,6 +104,9 @@ class LidFeature:
     def execute(self, obj):
         gap = FreeCAD.Units.Quantity("2 mm")
         lid = create_lid(obj.Length, obj.Width, obj.Thickness, obj.Clearance)
+        for labl in obj.Labels:
+            if labl.Shape:
+                lid = lid.cut(labl.Shape)
         obj.Shape = lid
         if obj.Shape is None:
             FreeCAD.Console.PrintError("Lid shape is None. Check parameters.\n")
@@ -139,7 +142,7 @@ class BoxFeature:
         if obj.FilletTop:
             box = common.fillet_edges(box, obj.TopFilletRadius, "top")
         
-        # Add the lid if enabled
+        # Cut out the lid if enabled
         if obj.LidThickness > 0:
             cutter = create_lid(obj.Length, obj.Width, obj.LidThickness, FreeCAD.Units.Quantity("0 mm"))
             if cutter is None:
@@ -148,10 +151,13 @@ class BoxFeature:
             cutter.translate(FreeCAD.Vector(0, RIM_WIDTH, obj.Height - obj.LidThickness))
             box = box.cut(cutter)
         
-        # Subtract compartments if any
+        # Subtract compartments or labels if any
         for comp in obj.Compartments:
             if comp.Shape:
                 box = box.cut(comp.Shape)
+        for labl in obj.Labels:
+            if labl.Shape:
+                box = box.cut(labl.Shape)
         obj.Shape = box
         if obj.Shape is None:
             FreeCAD.Console.PrintError("Box shape is None. Check parameters.\n")
