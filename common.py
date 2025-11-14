@@ -34,11 +34,11 @@ def get_face(boundingbox, face_type):
         p1 = FreeCAD.Vector(bb.XMin, bb.YMin, bb.ZMin)
         p2 = FreeCAD.Vector(bb.XMax, bb.YMin, bb.ZMax)
     elif face_type == "Back":
-        p1 = FreeCAD.Vector(bb.XMin, bb.YMax, bb.ZMin)
-        p2 = FreeCAD.Vector(bb.XMax, bb.YMax, bb.ZMax)
-    elif face_type == "Left":
-        p1 = FreeCAD.Vector(bb.XMin, bb.YMin, bb.ZMin)
+        p1 = FreeCAD.Vector(bb.XMax, bb.YMax, bb.ZMin)
         p2 = FreeCAD.Vector(bb.XMin, bb.YMax, bb.ZMax)
+    elif face_type == "Left":
+        p1 = FreeCAD.Vector(bb.XMin, bb.YMax, bb.ZMin)
+        p2 = FreeCAD.Vector(bb.XMin, bb.YMin, bb.ZMax)
     elif face_type == "Right":
         p1 = FreeCAD.Vector(bb.XMax, bb.YMin, bb.ZMin)
         p2 = FreeCAD.Vector(bb.XMax, bb.YMax, bb.ZMax)
@@ -46,6 +46,141 @@ def get_face(boundingbox, face_type):
         p1 = FreeCAD.Vector(bb.XMin, bb.YMin, bb.ZMax)
         p2 = FreeCAD.Vector(bb.XMax, bb.YMax, bb.ZMax)
     return p1, p2
+
+def find_plane(bottomleft, topright):
+    """
+    Determines the plane and normal vector based on two corner points.
+    
+    Args:
+        bottomleft (FreeCAD.Vector): The bottom-left corner point.
+        topright (FreeCAD.Vector): The top-right corner point.
+    
+    Returns:
+        tuple: normal vector (FreeCAD.Vector).
+    """
+    if math.isclose(bottomleft.x, topright.x):
+        # YZ plane
+        if bottomleft.y > topright.y:
+            # left side
+            return FreeCAD.Vector(-1,0,0)
+        #right side
+        return FreeCAD.Vector(1,0,0)
+    elif math.isclose(bottomleft.y, topright.y):
+        # XZ plane
+        if bottomleft.x > topright.x:
+            # back side
+            return FreeCAD.Vector(0,1,0)
+        #front side
+        return FreeCAD.Vector(0,-1,0)
+    elif math.isclose(bottomleft.z, topright.z):
+        # XY plane
+        if bottomleft.x > topright.x:
+            # bottom side
+            return FreeCAD.Vector(0,0,-1)
+        #top side
+        return FreeCAD.Vector(0,0,1)
+    else:
+        return None, None
+
+def getlh(bottomleft, topright):
+    """
+    get the length and width of a rectangle based on 2 corners
+    the rectangle must be parallel to the cardinal axes.
+
+    Args:
+        bottomleft (FreeCAD.Vector): The bottom-left corner of the rectangle
+        topright (FreeCAD.Vector): The top-right corner of the rectangle
+    """
+    normal = find_plane(bottomleft, topright)
+    l = FreeCAD.Vector(topright.y - bottomleft.y,
+                       bottomleft.x - topright.x,
+                       topright.x - bottomleft.x)*normal
+    h = FreeCAD.Vector(topright.z - bottomleft.z,
+                       topright.z - bottomleft.z,
+                       topright.y - bottomleft.y)*normal
+    return l,abs(h)
+
+def center_on_face(bottomleft, topright, shape, depth):
+    """
+    Centers a shape on a specified face defined by two corner points.
+
+    Returns:
+        FreeCAD.Vector: The translation vector to center the shape on the face.
+    """
+    bl = bottomleft
+    tr = topright
+    bb = shape.BoundBox
+    normal = find_plane(bl, tr)
+    if hasattr(depth, "Value"):
+        depth = depth.Value
+    xl = bb.XLength
+    yl = bb.YLength
+    zl = bb.ZLength
+    if normal.dot(FreeCAD.Vector(1,1,1)) < 0:
+        normal = -normal
+    m2 = FreeCAD.Matrix(FreeCAD.Vector(
+                                       bl.x - bb.XMin - depth,
+                                       bl.y - bb.YMin + (tr.y - bl.y - yl)/2,
+                                       bl.z - bb.ZMin + (tr.z - bl.z - zl)/2),
+                        FreeCAD.Vector(
+                                       bl.x - bb.XMin + (tr.x - bl.x - xl)/2,
+                                       bl.y - bb.YMin - depth,
+                                       bl.z - bb.ZMin + (tr.z - bl.z - zl)/2),
+                        FreeCAD.Vector(
+                                       bl.x - bb.XMin + (tr.x - bl.x - xl)/2,
+                                       bl.y - bb.YMin + (tr.y - bl.y - yl)/2,
+                                       bl.z - bb.ZMin - depth),
+                        FreeCAD.Vector(0,0,0))
+    return m2*normal
+
+def zero_shape(shape):
+    """
+    moves a shape to the origin based on its bounding box
+
+    Args:
+        shape (Part.Shape): The shape to be moved
+    """
+    shape.translate(FreeCAD.Vector(-shape.BoundBox.XMin,
+                                   -shape.BoundBox.YMin,
+                                   -shape.BoundBox.ZMin))
+    return shape
+
+def face_rotation(normal):
+    """
+    get rotation angle and vector for rotating a shape lying on the XY plane
+    (typically an extrusion) to be orthogonal to the given normal vector
+
+    Args:
+        normal (FreeCAD.Vector): orthogonal vector to the face of desired orientation
+
+    Returns:
+        angle, rotation_vector - the scalar angle in degrees and the rotation axis
+        vector to pass into shape.rotate()
+    """
+    #L -X, 240, -.58, .58, .58
+    #R +X, 120, .58, .58, .58
+    #F -Y, 90, 1, 0, 0
+    #B +Y, 180, 0, -.71, -.71
+    #T +Z, 0, 0, 0, 0
+    s3 = 3**-0.5 #1/sqrt(3)
+    s2 = 2**-0.5 #1/sqrt(2)
+    if normal.dot(FreeCAD.Vector(1,1,1)) < 0:
+        #front, left, or bottom
+        m = FreeCAD.Matrix(FreeCAD.Vector(s3,-s3,-s3), #each vector is a column
+                           FreeCAD.Vector(-1,0,0),
+                           FreeCAD.Vector(0,0,0),
+                           FreeCAD.Vector(0,0,0))
+        a = FreeCAD.Vector(-240,-90,0)
+    else:
+        #back, right, or top
+        m = FreeCAD.Matrix(FreeCAD.Vector(s3,s3,s3),
+                           FreeCAD.Vector(0,-s2,-s2),
+                           FreeCAD.Vector(0,0,0),
+                           FreeCAD.Vector(0,0,0))
+        a = FreeCAD.Vector(120,180,0)
+    rot = m*normal
+    angl = a.dot(normal)
+    return angl, rot
 
 def fillet_edges(box, radius, edge_type):
     """
@@ -93,59 +228,6 @@ def chamfer_bottom(box, size):
         FreeCAD.Console.PrintError(str(e))
         return box
 
-def find_plane(bottomleft, topright):
-    """
-    Determines the plane and normal vector based on two corner points.
-    
-    Args:
-        bottomleft (FreeCAD.Vector): The bottom-left corner point.
-        topright (FreeCAD.Vector): The top-right corner point.
-    
-    Returns:
-        tuple: normal vector (FreeCAD.Vector).
-    """
-    if math.isclose(bottomleft.x, topright.x):
-        # YZ plane
-        if bottomleft.y > topright.y:
-            # left side
-            return FreeCAD.Vector(1,0,0)
-        #right side
-        return FreeCAD.Vector(-1,0,0)
-    elif math.isclose(bottomleft.y, topright.y):
-        # XZ plane
-        if bottomleft.x > topright.x:
-            # back side
-            return FreeCAD.Vector(0,1,0)
-        #front side
-        return FreeCAD.Vector(0,-1,0)
-    elif math.isclose(bottomleft.z, topright.z):
-        # XY plane
-        if bottomleft.x > topright.x:
-            # bottom side
-            return FreeCAD.Vector(0,0,-1)
-        #top side
-        return FreeCAD.Vector(0,0,1)
-    else:
-        return None, None
-
-def getlh(bottomleft, topright):
-    """
-    get the length and width of a rectangle based on 2 corners
-    the rectangle must be parallel to the cardinal axes.
-
-    Args:
-        bottomleft (FreeCAD.Vector): The bottom-left corner of the rectangle
-        topright (FreeCAD.Vector): The top-right corner of the rectangle
-    """
-    normal = find_plane(bottomleft, topright)
-    l = FreeCAD.Vector(bottomleft.y - topright.y,
-                       bottomleft.x - topright.x,
-                       topright.x - bottomleft.x)*normal
-    h = FreeCAD.Vector(bottomleft.z - topright.z,
-                       bottomleft.z - topright.z,
-                       topright.y - bottomleft.y)*normal
-    return l,h
-
 def set_on_face(bottomleft, topright, shape, offset):
     """
     takes an extrusion and places it on the specified face of a box
@@ -154,56 +236,64 @@ def set_on_face(bottomleft, topright, shape, offset):
         bottomleft (FreeCAD.Vector): The bottom-left corner of the label area.
         topright (FreeCAD.Vector): The top-right corner of the label area.
         shape (Part.Shape): The shape to be placed.
-        offset (float): The offset distance from the face.
+        offset (float): The offset distance from the face. if 0 the shape is left at the origin
     """
     normal = find_plane(bottomleft, topright)
     l,h = getlh(bottomleft, topright)
     xl = shape.BoundBox.XLength
     yl = shape.BoundBox.YLength
-    print(normal, l,h,xl,yl)
     if hasattr(offset, "Value"):
         offset = offset.Value
     #first rotate to match the aspect ratio
     if (h > l and xl > yl) or (l > h and yl > xl):
-        shape = shape.rotate(FreeCAD.Vector(0,0,0), FreeCAD.Vector(0,0,1), 90)
+        shape = shape.copy()
+        shape.rotate(FreeCAD.Vector(0,0,0), FreeCAD.Vector(0,0,1), 90)
         xl,yl = yl,xl
-    #now rotate to the correct face
-    #L +X, R -X, F -Y, B +Y, T +Z
-    #L 240, -.58, .58, .58
-    #R 120, .58, .58, .58
-    #F 90, 1, 0, 0
-    #B 180, 0, -.71, -.71
-    m = FreeCAD.Matrix(FreeCAD.Vector(1,1,1), #each vector is a column
-                       FreeCAD.Vector(1,0,0),
-                       FreeCAD.Vector(0,0,0),
-                       FreeCAD.Vector(0,0,0))
-    #now move to the origin
-    shape.translate(FreeCAD.Vector(-shape.BoundBox.XMin,
-                                   -shape.BoundBox.YMin,
-                                   -shape.BoundBox.ZMin))
-    rot = m*normal
+    angl, rot = face_rotation(normal)
     if rot.Length > 0:
-        shape.rotate(FreeCAD.Vector(0,0,0), rot, 75 + 15*rot.Length**2)
+        shape = shape.copy()
+        shape.rotate(FreeCAD.Vector(0,0,0), rot, angl)
+    #now move to the origin
+    shape = zero_shape(shape.copy())
     
+    if offset == 0:
+        return shape.copy()
     #now move centered on the face, with the specified offset
-    bl = bottomleft
-    tr = topright
-    bb = shape.BoundBox
-    m2 = FreeCAD.Matrix(FreeCAD.Vector(
-                                       bl.x - bb.XMin + offset,
-                                       bl.y - bb.YMin + (tr.y - bl.y - xl)/2,
-                                       bl.z - bb.ZMin + (tr.z - bl.z - yl)/2),
-                        FreeCAD.Vector(
-                                       bl.x - bb.XMin + (tr.x - bl.x - xl)/2,
-                                       bl.y - bb.YMin + offset,
-                                       bl.z - bb.ZMin + (tr.z - bl.z - yl)/2),
-                        FreeCAD.Vector(
-                                       bl.x - bb.XMin + (tr.x - bl.x - xl)/2,
-                                       bl.y - bb.YMin + (tr.y - bl.y - yl)/2,
-                                       bl.z - bb.ZMin + offset),
-                        FreeCAD.Vector(0,0,0))
-    shape.translate(m2*normal)
+    shape.translate(center_on_face(bottomleft, topright, shape, offset))
     return shape
+
+import Part
+
+def make_faces_from_wires(wires):
+    """Build faces correctly from ShapeString wires, preserving holes."""
+    faces = []
+
+    # Step 1: Sort by area descending so outers come before inners
+    wires = [w for w in wires if w.isClosed()]
+    wires.sort(key=lambda w: w.BoundBox.XLength * w.BoundBox.YLength, reverse=True)
+
+    used = set()
+    for i, outer in enumerate(wires):
+        if i in used:
+            continue
+
+        inners = []
+        outer_bb = outer.BoundBox
+        for j, inner in enumerate(wires):
+            if j == i or j in used:
+                continue
+            # Check if inner wire lies fully inside outer
+            if outer_bb.isInside(inner.BoundBox):
+                inners.append(inner)
+                used.add(j)
+
+        # Create a face from outer + inner wires
+        face = Part.Face([outer] + inners)
+        faces.append(face)
+        used.add(i)
+
+    return faces
+
 
 def svg_label(file, extrudelen):
     """
@@ -223,7 +313,8 @@ def svg_label(file, extrudelen):
         svgshapes = [s.Shape for s in svgdoc.Objects if hasattr(s,"Shape") and not s.Shape.isNull()]
         FreeCAD.closeDocument(svgdoc.Name)
         if svgshapes:
-            faces = [Part.Face(wire) for wire in svgshapes if wire.isClosed()]
+            wires = [wire for wire in svgshapes]
+            faces = make_faces_from_wires(wires)
             if len(faces)==0:
                 print("No closed shapes found in SVG for extrusion.")
                 faces = svgshapes
@@ -236,7 +327,7 @@ def svg_label(file, extrudelen):
 
 def text_label(bottomleft, topright, string, font, extrudelen):
     """
-    Creates a 3D text label sized to fit within the specified face of a box.
+    Creates a 3D text label oriented and sized to fit within the specified face of a box.
 
     Args:
         bottomleft (FreeCAD.Vector): The bottom-left corner of the label area.
@@ -252,10 +343,18 @@ def text_label(bottomleft, topright, string, font, extrudelen):
         size = h / (len(string) * 1.3)
     if size > l: size = l * .9
     if size > h: size = h * .9
+    normal = find_plane(bottomleft, topright)
+    angle, axis = face_rotation(normal)
+    if normal.dot(FreeCAD.Vector(1,1,1)) < 0:
+        normal = -normal #flip normal if negative so extrusion is always positive
     try:
         shapestring = Draft.make_shapestring(string, font, size)
-        faces = [Part.Face(wire) for wire in shapestring.Shape.Wires if wire.isClosed()]
-        txt_extrude = Part.Compound(faces).extrude(FreeCAD.Vector(0,0,extrudelen))
+        faces = make_faces_from_wires(shapestring.Shape.Wires)
+        cmp = Part.Compound(faces)
+        if angle != 0:
+            cmp.rotate(FreeCAD.Vector(0,0,0), axis, angle)
+        zero_shape(cmp)
+        txt_extrude = cmp.extrude(normal*extrudelen.Value)
         FreeCAD.ActiveDocument.removeObject(shapestring.Name)
         return txt_extrude
     except Exception as e:

@@ -3,12 +3,15 @@ from PySide import QtGui
 import Draft, importSVG, Part, math, os
 import common
 
+#TODO: lid labels placement (center on box)
+#TODO: svg orientation
+
 class LabelFeature:
     def __init__(self, obj):
         obj.Proxy = self
         obj.addProperty("App::PropertyBool", "LidLabel", "Label", "Label is for lid").LidLabel = False
         obj.addProperty("App::PropertyEnumeration", "Face", "Label",
-                        "Box face label will be placed on").Face = ["Front", "Back", "Left", "Right"]
+                        "Box face label will be placed on").Face = ["Front", "Back", "Left", "Right", ""]
         
         obj.addProperty("App::PropertyLength", "Depth", "Label", "Engraving Depth").Depth = 1.0
         obj.addProperty("App::PropertyString", "LabelText", "Label", "Text label for this compartment").LabelText = "Label"
@@ -28,17 +31,14 @@ class LabelFeature:
             p1, p2 = common.get_face(parent.Shape.BoundBox, "Top")
         else:
             p1, p2 = common.get_face(parent.Shape.BoundBox, obj.Face)
-        print("parent name:", parent.Name)
-        print("Label face points:", p1, p2)
         if obj.SVGFile:
             label = common.svg_label(obj.SVGFile, 2*obj.Depth)
+            label = common.set_on_face(p1, p2, label,0)
         elif obj.LabelText and obj.FontFile:
             label = common.text_label(p1, p2, obj.LabelText, obj.FontFile, 2*obj.Depth)
         else:
             obj.Shape = Part.Shape()
             return
-        print(obj.LabelText)
-        label = common.set_on_face(p1, p2, label, -obj.Depth)
         obj.Shape = label
 
 class ViewProviderLabel:
@@ -92,10 +92,12 @@ class LabelTaskPanel:
             self.layout.addWidget(fGroup)
 
         # Depth spin
+        fl = QtGui.QFormLayout()
         self.depthSpin = QtGui.QDoubleSpinBox()
         self.depthSpin.setRange(0, 100)
         self.depthSpin.setValue(obj[0].Depth)
-        self.layout.addWidget(self.depthSpin)
+        fl.addRow("Depth:", self.depthSpin)
+        self.layout.addLayout(fl)
 
         # label group
         lGroup = QtGui.QGroupBox("Label")
@@ -128,6 +130,7 @@ class LabelTaskPanel:
             self.svgEdit.setText(fn)
 
     def accept(self):
+        parent = self.obj[0].InList[1] #first parent is the insert
         if not self.obj[0].LidLabel:
             sides = []
             if self.chkFront.isChecked():
@@ -138,8 +141,6 @@ class LabelTaskPanel:
                 sides.append("Left")
             if self.chkRight.isChecked():
                 sides.append("Right")
-            parent = self.obj[0].InList[1] #first parent is the insert
-            print(parent.Name)
             if len(sides) > len(self.obj):
                 for i in range(len(self.obj), len(sides)):
                     self.obj.append(create_label(parent))
@@ -158,7 +159,12 @@ class LabelTaskPanel:
             obj.FontFile   = self.fontEdit.text()
             obj.SVGFile    = self.svgEdit.text()
 
-            #TODO: place on face
+            #recompute to update shape
+            obj.recompute()
+
+            # place on face
+            p1, p2 = common.get_face(parent.Shape.BoundBox, obj.Face)
+            obj.Placement.Base = common.center_on_face(p1, p2, obj.Shape, obj.Depth)
         
         FreeCAD.ActiveDocument.recompute()
         return True

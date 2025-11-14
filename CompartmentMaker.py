@@ -109,12 +109,12 @@ class CompartmentFeature:
         if obj.SVGFile:
             bb = shape.BoundBox
             label = common.svg_label(obj.SVGFile, obj.Depth)
-            label = common.set_on_face(FreeCAD.Vector(bb.XMin, bb.YMin, bb.ZMin), FreeCAD.Vector(bb.XMax, bb.YMax, bb.ZMin), label, -.5)
+            label = common.set_on_face(FreeCAD.Vector(bb.XMin, bb.YMin, bb.ZMin), FreeCAD.Vector(bb.XMax, bb.YMax, bb.ZMin), label, .5)
             shapes.append(label)
         elif obj.LabelText and obj.FontFile:
             bb = shape.BoundBox
             label = common.text_label(FreeCAD.Vector(bb.XMin, bb.YMin, bb.ZMin), FreeCAD.Vector(bb.XMax, bb.YMax, bb.ZMin), obj.LabelText, obj.FontFile, obj.Depth)
-            label = common.set_on_face(FreeCAD.Vector(bb.XMin, bb.YMin, bb.ZMin), FreeCAD.Vector(bb.XMax, bb.YMax, bb.ZMin), label, -.5)
+            label = common.set_on_face(FreeCAD.Vector(bb.XMin, bb.YMin, bb.ZMin), FreeCAD.Vector(bb.XMax, bb.YMax, bb.ZMin), label, .5)
             shapes.append(label)
 
         obj.Shape = Part.makeCompound(shapes)
