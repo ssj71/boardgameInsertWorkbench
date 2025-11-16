@@ -294,8 +294,32 @@ def make_faces_from_wires(wires):
 
     return faces
 
+def orient_and_extrude(bottomleft, topright, faces, extrudelen):
+    """
+    Orients and extrudes a shape to fit on a specified face of a box.
+    Args:
+        bottomleft (FreeCAD.Vector): The bottom-left corner of the label area.
+        topright (FreeCAD.Vector): The top-right corner of the label area.
+        faces (Part.Shape): The shape to be extruded.
+        extrudelen (float): The extrusion length.
+    Returns:
+        Part.Shape: The extruded shape.
+    """
+    l,h = getlh(bottomleft, topright)
+    normal = find_plane(bottomleft, topright)
+    angle, axis = face_rotation(normal)
+    if normal.dot(FreeCAD.Vector(1,1,1)) < 0:
+        normal = -normal #flip normal if negative so extrusion is always positive
+    try:
+        if angle != 0:
+            faces.rotate(FreeCAD.Vector(0,0,0), axis, angle)
+        zero_shape(faces)
+        extrusion = faces.extrude(normal*extrudelen.Value)
+        return extrusion
+    except Exception as e:
+        FreeCAD.Console.PrintError(f"Label engraving failed: {e}\n")
 
-def svg_label(file, extrudelen):
+def svg_label(bottomleft, topright, file, extrudelen, scale=1.0):
     """
     Creates a 3D label from an SVG file and places it on a specified face of a box.
     
@@ -318,8 +342,7 @@ def svg_label(file, extrudelen):
             if len(faces)==0:
                 print("No closed shapes found in SVG for extrusion.")
                 faces = svgshapes
-            svg_extrude = Part.Compound(faces).extrude(FreeCAD.Vector(0,0, extrudelen))
-            
+            svg_extrude = orient_and_extrude(bottomleft, topright, Part.Compound(faces), extrudelen)
             return svg_extrude
     except Exception as e:
         FreeCAD.Console.PrintError(f"An error occurred while processing the SVG label: {str(e)}\n")
@@ -343,18 +366,11 @@ def text_label(bottomleft, topright, string, font, extrudelen):
         size = h / (len(string) * 1.3)
     if size > l: size = l * .9
     if size > h: size = h * .9
-    normal = find_plane(bottomleft, topright)
-    angle, axis = face_rotation(normal)
-    if normal.dot(FreeCAD.Vector(1,1,1)) < 0:
-        normal = -normal #flip normal if negative so extrusion is always positive
     try:
         shapestring = Draft.make_shapestring(string, font, size)
         faces = make_faces_from_wires(shapestring.Shape.Wires)
         cmp = Part.Compound(faces)
-        if angle != 0:
-            cmp.rotate(FreeCAD.Vector(0,0,0), axis, angle)
-        zero_shape(cmp)
-        txt_extrude = cmp.extrude(normal*extrudelen.Value)
+        txt_extrude = orient_and_extrude(bottomleft, topright, cmp, extrudelen)
         FreeCAD.ActiveDocument.removeObject(shapestring.Name)
         return txt_extrude
     except Exception as e:
