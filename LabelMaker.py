@@ -18,6 +18,7 @@ class LabelFeature:
         workbench_dir = os.path.dirname(__file__)
         obj.addProperty("App::PropertyFile", "FontFile", "Label", "Path to TTF/OTF font file").FontFile = common.default_font()
         obj.addProperty("App::PropertyFile", "SVGFile", "Label", "Path to SVG font file").SVGFile = ""
+        obj.addProperty("App::PropertyFloat", "Scale", "Label", "Additional Scaling Factor").Scale = 1.0
 
     def execute(self, obj):
         for p in obj.InList:
@@ -28,14 +29,14 @@ class LabelFeature:
             obj.Shape = Part.Shape()
             return
         if obj.LidLabel:
-            p1, p2 = common.get_face(parent.Shape.BoundBox, "Top")
+            p1, p2 = common.get_face(parent, "Top")
         else:
-            p1, p2 = common.get_face(parent.Shape.BoundBox, obj.Face)
+            p1, p2 = common.get_face(parent, obj.Face)
         if obj.SVGFile:
-            label = common.svg_label(obj.SVGFile, 2*obj.Depth)
-            label = common.set_on_face(p1, p2, label,0)
+            label = common.svg_label(p1, p2, obj.SVGFile, 2*obj.Depth, obj.Scale)
+            #label = common.set_on_face(p1, p2, label,0)
         elif obj.LabelText and obj.FontFile:
-            label = common.text_label(p1, p2, obj.LabelText, obj.FontFile, 2*obj.Depth)
+            label = common.text_label(p1, p2, obj.LabelText, obj.FontFile, 2*obj.Depth, obj.Scale)
         else:
             obj.Shape = Part.Shape()
             return
@@ -113,9 +114,13 @@ class LabelTaskPanel:
         svgLayout = QtGui.QHBoxLayout()
         svgLayout.addWidget(self.svgEdit)
         svgLayout.addWidget(self.svgButton)
+        self.scaleSpin = QtGui.QDoubleSpinBox()
+        self.scaleSpin.setRange(0, 800)
+        self.scaleSpin.setValue(obj[0].Scale)
         fl.addRow("Text:", self.labelEdit)
         fl.addRow("Font:", fontLayout)
         fl.addRow("SVG:", svgLayout)
+        fl.addRow("Scale %:", self.scaleSpin)
         self.fontButton.clicked.connect(self.chooseFont)
         self.svgButton.clicked.connect(self.chooseSVG)
         self.layout.addWidget(lGroup)
@@ -158,12 +163,13 @@ class LabelTaskPanel:
             obj.LabelText  = self.labelEdit.text()
             obj.FontFile   = self.fontEdit.text()
             obj.SVGFile    = self.svgEdit.text()
+            obj.Scale      = self.scaleSpin.value()
 
             #recompute to update shape
             obj.recompute()
 
             # place on face
-            p1, p2 = common.get_face(parent.Shape.BoundBox, obj.Face)
+            p1, p2 = common.get_face(parent, obj.Face)
             obj.Placement.Base = common.center_on_face(p1, p2, obj.Shape, obj.Depth)
         
         FreeCAD.ActiveDocument.recompute()

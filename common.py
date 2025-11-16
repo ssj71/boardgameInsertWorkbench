@@ -22,29 +22,34 @@ def get_edges(box, edge_type):
                 found_edges.append(edge)
     return found_edges
 
-def get_face(boundingbox, face_type):
+def get_face(parent, face_type):
     """
     Returns the bottom-left and top-right corner points of the specified face of a bounding box.
     Args:
         boundingbox (Part.BoundBox): The bounding box of the object.
         face_type (str): The type of face ("Top", "Front", "Back", "Left", "Right").
     """
-    bb = boundingbox
+    if hasattr(parent, "Height"):
+        h = parent.Height.Value
+    elif hasattr(parent, "Thickness"):
+        h = parent.Thickness.Value
+    w = parent.Width.Value
+    l = parent.Length.Value
     if face_type == "Front":
-        p1 = FreeCAD.Vector(bb.XMin, bb.YMin, bb.ZMin)
-        p2 = FreeCAD.Vector(bb.XMax, bb.YMin, bb.ZMax)
+        p1 = FreeCAD.Vector(0, 0, 0)
+        p2 = FreeCAD.Vector(l, 0, h)
     elif face_type == "Back":
-        p1 = FreeCAD.Vector(bb.XMax, bb.YMax, bb.ZMin)
-        p2 = FreeCAD.Vector(bb.XMin, bb.YMax, bb.ZMax)
+        p1 = FreeCAD.Vector(l, w, 0)
+        p2 = FreeCAD.Vector(0, w, h)
     elif face_type == "Left":
-        p1 = FreeCAD.Vector(bb.XMin, bb.YMax, bb.ZMin)
-        p2 = FreeCAD.Vector(bb.XMin, bb.YMin, bb.ZMax)
+        p1 = FreeCAD.Vector(0, w, 0)
+        p2 = FreeCAD.Vector(0, 0, h)
     elif face_type == "Right":
-        p1 = FreeCAD.Vector(bb.XMax, bb.YMin, bb.ZMin)
-        p2 = FreeCAD.Vector(bb.XMax, bb.YMax, bb.ZMax)
+        p1 = FreeCAD.Vector(l, 0, 0)
+        p2 = FreeCAD.Vector(l, w, h)
     else:  # Top
-        p1 = FreeCAD.Vector(bb.XMin, bb.YMin, bb.ZMax)
-        p2 = FreeCAD.Vector(bb.XMax, bb.YMax, bb.ZMax)
+        p1 = FreeCAD.Vector(0, 0, h)
+        p2 = FreeCAD.Vector(l, w, h)
     return p1, p2
 
 def find_plane(bottomleft, topright):
@@ -342,13 +347,17 @@ def svg_label(bottomleft, topright, file, extrudelen, scale=1.0):
             if len(faces)==0:
                 print("No closed shapes found in SVG for extrusion.")
                 faces = svgshapes
+            scale_matrix = FreeCAD.Base.Matrix()
+            scale_matrix.scale(scale, scale, scale)
+            for face in faces:
+                Part.Shape.transformShape(face, scale_matrix)
             svg_extrude = orient_and_extrude(bottomleft, topright, Part.Compound(faces), extrudelen)
             return svg_extrude
     except Exception as e:
         FreeCAD.Console.PrintError(f"An error occurred while processing the SVG label: {str(e)}\n")
     return None
 
-def text_label(bottomleft, topright, string, font, extrudelen):
+def text_label(bottomleft, topright, string, font, extrudelen, scale=1.0):
     """
     Creates a 3D text label oriented and sized to fit within the specified face of a box.
 
@@ -366,6 +375,7 @@ def text_label(bottomleft, topright, string, font, extrudelen):
         size = h / (len(string) * 1.3)
     if size > l: size = l * .9
     if size > h: size = h * .9
+    size = size * scale
     try:
         shapestring = Draft.make_shapestring(string, font, size)
         faces = make_faces_from_wires(shapestring.Shape.Wires)
