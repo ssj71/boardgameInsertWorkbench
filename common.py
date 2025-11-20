@@ -324,6 +324,22 @@ def orient_and_extrude(bottomleft, topright, faces, extrudelen):
     except Exception as e:
         FreeCAD.Console.PrintError(f"Label engraving failed: {e}\n")
 
+def flatten_wire(wire):
+    # Build a projection matrix that removes the Z component of any point
+    m = FreeCAD.Matrix()
+
+    # X' = X*(1,0,0)
+    m.A11 = 1; m.A12 = 0; m.A13 = 0; m.A14 = 0
+    # Y' = Y*(0,1,0)
+    m.A21 = 0; m.A22 = 1; m.A23 = 0; m.A24 = 0
+    # Z' = 0*(X,Y,Z) + 0
+    m.A31 = 0; m.A32 = 0; m.A33 = 0; m.A34 = 0
+    # Homogeneous row
+    m.A41 = 0; m.A42 = 0; m.A43 = 0; m.A44 = 1
+
+    # Apply to entire Wire shape (preserves curves)
+    return wire.transformGeometry(m)
+
 def svg_label(bottomleft, topright, file, extrudelen, scale=1.0):
     """
     Creates a 3D label from an SVG file and places it on a specified face of a box.
@@ -342,16 +358,17 @@ def svg_label(bottomleft, topright, file, extrudelen, scale=1.0):
         svgshapes = [s.Shape for s in svgdoc.Objects if hasattr(s,"Shape") and not s.Shape.isNull()]
         FreeCAD.closeDocument(svgdoc.Name)
         if svgshapes:
-            wires = [wire for wire in svgshapes]
+            wires = [flatten_wire(s.Wires[0]) for s in svgshapes]
             faces = make_faces_from_wires(wires)
-            if len(faces)==0:
-                print("No closed shapes found in SVG for extrusion.")
-                faces = svgshapes
-            scale_matrix = FreeCAD.Base.Matrix()
+            scaledfaces = []
+            scale_matrix = FreeCAD.Matrix()
             scale_matrix.scale(scale, scale, scale)
             for face in faces:
-                Part.Shape.transformShape(face, scale_matrix)
-            svg_extrude = orient_and_extrude(bottomleft, topright, Part.Compound(faces), extrudelen)
+                scaledfaces.append(face.transformGeometry(scale_matrix))
+            if len(scaledfaces)==0:
+                FreeCAD.Console.PrintError("no valid shapes found in the SVG label\n")
+                return None
+            svg_extrude = orient_and_extrude(bottomleft, topright, Part.Compound(scaledfaces), extrudelen)
             return svg_extrude
     except Exception as e:
         FreeCAD.Console.PrintError(f"An error occurred while processing the SVG label: {str(e)}\n")
