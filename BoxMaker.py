@@ -105,7 +105,7 @@ class LidFeature:
         gap = FreeCAD.Units.Quantity("2 mm")
         lid = create_lid(obj.Length, obj.Width, obj.Thickness, obj.Clearance)
         for labl in obj.Labels:
-            if labl.Shape:
+            if labl.Shape is not None and not labl.Shape.isNull():
                 lid = lid.cut(labl.Shape)
         obj.Shape = lid
         if obj.Shape is None:
@@ -156,7 +156,7 @@ class BoxFeature:
             if comp.Shape:
                 box = box.cut(comp.Shape)
         for labl in obj.Labels:
-            if labl.Shape:
+            if labl.Shape is not None and not labl.Shape.isNull():
                 box = box.cut(labl.Shape)
         obj.Shape = box
         if obj.Shape is None:

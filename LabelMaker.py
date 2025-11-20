@@ -32,12 +32,13 @@ class LabelFeature:
             p1, p2 = common.get_face(parent, "Top")
         else:
             p1, p2 = common.get_face(parent, obj.Face)
+        label = None
         if obj.SVGFile:
             label = common.svg_label(p1, p2, obj.SVGFile, 2*obj.Depth, obj.Scale)
             #label = common.set_on_face(p1, p2, label,0)
         elif obj.LabelText and obj.FontFile:
             label = common.text_label(p1, p2, obj.LabelText, obj.FontFile, 2*obj.Depth, obj.Scale)
-        else:
+        if not label or label.isNull():
             obj.Shape = Part.Shape()
             return
         obj.Shape = label
