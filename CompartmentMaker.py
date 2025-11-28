@@ -277,10 +277,9 @@ class CompartmentTaskPanel:
 
         # name it
         if self.obj.SVGFile:
-            name = os.path.split(self.obj.SVGFile)[-1].split(".")[0] + "_Compartment"
+            self.obj.Label = os.path.split(self.obj.SVGFile)[-1].split(".")[0] + "_Compartment"
         elif self.obj.LabelText:
-            name = self.obj.LabelText + "_Compartment"
-        self.obj.Label = name
+            self.obj.Label = self.obj.LabelText + "_Compartment"
         
         FreeCAD.ActiveDocument.recompute()
         return True
