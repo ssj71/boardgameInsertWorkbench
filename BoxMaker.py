@@ -120,12 +120,9 @@ class BoxFeature:
         obj.addProperty("App::PropertyLength", "Length", "Box", "Outer length").Length = 95.0
         obj.addProperty("App::PropertyLength", "Width", "Box", "Outer width").Width = 68.5
         obj.addProperty("App::PropertyLength", "Height", "Box", "Outer height").Height = 34.0
-        obj.addProperty("App::PropertyBool", "Chamfer", "Options", "Chamfer bottom").Chamfer = True
         obj.addProperty("App::PropertyLength", "ChamferSize", "Options", "Chamfer size").ChamferSize = 1.0
-        obj.addProperty("App::PropertyBool", "FilletSides", "Options", "Fillet sides").FilletSides = True
         obj.addProperty("App::PropertyLength", "FilletRadius", "Options", "Fillet radius").FilletRadius = 3.0
-        obj.addProperty("App::PropertyBool", "FilletTop", "Options", "Fillet top").FilletTop = False
-        obj.addProperty("App::PropertyLength", "TopFilletRadius", "Options", "Top fillet radius").TopFilletRadius = 1.0
+        obj.addProperty("App::PropertyLength", "TopFilletRadius", "Options", "Top fillet radius").TopFilletRadius = 0.0
         obj.addProperty("App::PropertyLength", "LidThickness", "Options", "Lid thickness").LidThickness = 2.0
         obj.addProperty("App::PropertyLinkList", "Compartments", "Box", "Compartments")
         obj.addProperty("App::PropertyLinkList", "Labels", "Options", "Labels")
@@ -135,11 +132,11 @@ class BoxFeature:
         # Create the outer box
         box = Part.makeBox(obj.Length, obj.Width, obj.Height)
         # Apply fillet and chamfer operations if enabled
-        if obj.Chamfer:
+        if obj.ChamferSize > 0:
             box = common.chamfer_bottom(box, obj.ChamferSize)
-        if obj.FilletSides:
+        if obj.FilletRadius > 0:
             box = common.fillet_edges(box, obj.FilletRadius, "sides")
-        if obj.FilletTop:
+        if obj.TopFilletRadius > 0:
             box = common.fillet_edges(box, obj.TopFilletRadius, "top")
         
         # Cut out the lid if enabled
@@ -170,11 +167,8 @@ class InsertFeature:
         obj.addProperty("App::PropertyLength", "Length", "Box", "Outer length").Length = 95.0
         obj.addProperty("App::PropertyLength", "Width", "Box", "Outer width").Width = 68.5
         obj.addProperty("App::PropertyLength", "Height", "Box", "Outer height").Height = 34.0
-        obj.addProperty("App::PropertyBool", "Chamfer", "Options", "Chamfer bottom").Chamfer = True
         obj.addProperty("App::PropertyLength", "ChamferSize", "Options", "Chamfer size").ChamferSize = 1.0
-        obj.addProperty("App::PropertyBool", "FilletSides", "Options", "Fillet sides").FilletSides = True
         obj.addProperty("App::PropertyLength", "FilletRadius", "Options", "Fillet radius").FilletRadius = 3.0
-        obj.addProperty("App::PropertyBool", "FilletTop", "Options", "Fillet top").FilletTop = False
         obj.addProperty("App::PropertyLength", "TopFilletRadius", "Options", "Top fillet radius").TopFilletRadius = 1.0
         obj.addProperty("App::PropertyBool", "HasLid", "Options", "Create lid").HasLid = True
         obj.addProperty("App::PropertyLength", "LidThickness", "Options", "Lid thickness").LidThickness = 2.0
@@ -193,27 +187,35 @@ class InsertFeature:
         else:
             return
         if lid and prop in ["Length", "Width", "HasLid", "LidThickness", "Clearance"]:
-            lid.Length = obj.Length
-            lid.Width = obj.Width
-            lid.Thickness = obj.LidThickness
-            lid.Clearance = obj.Clearance
+            if prop == "Length":
+                lid.Length = obj.Length
+            elif prop == "Width":
+                lid.Width = obj.Width
+            elif prop == "LidThickness":
+                lid.Thickness = obj.LidThickness
+            elif prop == "Clearance":
+                lid.Clearance = obj.Clearance
             lid.touch()
             update_compartment_zoffsets(obj)
         box = get_box(obj)
-        if box and prop in ["Length", "Width", "Height", "Chamfer", "ChamferSize", "FilletSides", "FilletRadius", "FilletTop", "TopFilletRadius", "HasLid", "LidThickness"]:
-            box.Length = obj.Length
-            box.Width = obj.Width
-            box.Height = obj.Height
-            box.Chamfer = obj.Chamfer
-            box.ChamferSize = obj.ChamferSize
-            box.FilletSides = obj.FilletSides
-            box.FilletRadius = obj.FilletRadius
-            box.FilletTop = obj.FilletTop
-            box.TopFilletRadius = obj.TopFilletRadius
-            if obj.HasLid:
-                box.LidThickness = obj.LidThickness
-            else:
-                box.LidThickness = 0
+        if box and prop in ["Length", "Width", "Height", "ChamferSize", "FilletRadius", "TopFilletRadius", "HasLid", "LidThickness"]:
+            if prop == "Length":
+                box.Length = obj.Length
+            elif prop == "Width":
+                box.Width = obj.Width
+            elif prop == "Height":
+                box.Height = obj.Height
+            elif prop == "ChamferSize":
+                box.ChamferSize = obj.ChamferSize
+            elif prop == "FilletRadius":
+                box.FilletRadius = obj.FilletRadius
+            elif prop == "TopFilletRadius":
+                box.TopFilletRadius = obj.TopFilletRadius
+            elif prop == "LidThickness":
+                if obj.HasLid:
+                    box.LidThickness = obj.LidThickness
+                else:
+                    box.LidThickness = 0
             box.touch()
 
 
@@ -257,10 +259,6 @@ class BoxTaskPanel:
         outerOptionsLayout = QtGui.QGridLayout(outerOptionsGroupBox)
         
         # Fillet sides option
-        self.outerSidesFilletCheck = QtGui.QCheckBox("Fillet outer vertical corners", form)
-        self.outerSidesFilletCheck.setChecked(obj.FilletSides)
-        outerOptionsLayout.addWidget(self.outerSidesFilletCheck, 0, 0)
-        
         outerSidesFilletRadiusLabel = QtGui.QLabel("Side Radius:", form)
         self.outerSidesFilletRadiusEdit = QtGui.QDoubleSpinBox(form)
         self.outerSidesFilletRadiusEdit.setValue(obj.FilletRadius)
@@ -268,10 +266,6 @@ class BoxTaskPanel:
         outerOptionsLayout.addWidget(self.outerSidesFilletRadiusEdit, 0, 2)
         
         # Fillet top option
-        self.outerTopFilletCheck = QtGui.QCheckBox("Fillet outer top edges", form)
-        self.outerTopFilletCheck.setChecked(obj.FilletTop)
-        outerOptionsLayout.addWidget(self.outerTopFilletCheck, 1, 0)
-        
         outerTopFilletRadiusLabel = QtGui.QLabel("Top Radius:", form)
         self.outerTopFilletRadiusEdit = QtGui.QDoubleSpinBox(form)
         self.outerTopFilletRadiusEdit.setValue(obj.TopFilletRadius)
@@ -279,11 +273,7 @@ class BoxTaskPanel:
         outerOptionsLayout.addWidget(self.outerTopFilletRadiusEdit, 1, 2)
         
         # Chamfer option
-        self.chamferCheck = QtGui.QCheckBox("Chamfer bottom edge (30°)", form)
-        self.chamferCheck.setChecked(obj.Chamfer)
-        outerOptionsLayout.addWidget(self.chamferCheck, 2, 0)
-        
-        chamferSizeLabel = QtGui.QLabel("Chamfer Size:", form)
+        chamferSizeLabel = QtGui.QLabel("Bottom Chamfer Size:", form)
         self.chamferSizeEdit = QtGui.QDoubleSpinBox(form)
         self.chamferSizeEdit.setValue(obj.ChamferSize)
         outerOptionsLayout.addWidget(chamferSizeLabel, 2, 1)
@@ -322,13 +312,9 @@ class BoxTaskPanel:
         self.obj.Width = self.outerWidthEdit.value()
         self.obj.Height = self.outerHeightEdit.value()
         
-        self.obj.FilletSides = self.outerSidesFilletCheck.isChecked()
         self.obj.FilletRadius = self.outerSidesFilletRadiusEdit.value()
-        self.obj.FilletTop = self.outerTopFilletCheck.isChecked()
         self.obj.TopFilletRadius = self.outerTopFilletRadiusEdit.value()
-        self.obj.Chamfer = self.chamferCheck.isChecked()
         self.obj.ChamferSize = self.chamferSizeEdit.value()
-        self.obj.HasLid = self.lidCheck.isChecked()
         self.obj.LidThickness = self.lidThicknessEdit.value()
         self.obj.Clearance = self.clearanceEdit.value()
         
@@ -352,11 +338,8 @@ class BoxTaskPanel:
             box.Length = self.obj.Length
             box.Width = self.obj.Width
             box.Height = self.obj.Height
-            box.Chamfer = self.obj.Chamfer
             box.ChamferSize = self.obj.ChamferSize
-            box.FilletSides = self.obj.FilletSides
             box.FilletRadius = self.obj.FilletRadius
-            box.FilletTop = self.obj.FilletTop
             box.TopFilletRadius = self.obj.TopFilletRadius
             if self.obj.HasLid:
                 box.LidThickness = self.obj.LidThickness
