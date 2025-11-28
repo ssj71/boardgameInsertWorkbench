@@ -69,7 +69,7 @@ def add_lid(obj):
 
 def get_lid(obj):
     for child in obj.Group:
-        if child.Name == "Lid":
+        if child.Name.startswith("Lid"):
             return child
     return None
 
