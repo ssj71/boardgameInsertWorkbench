@@ -117,7 +117,7 @@ class LabelTaskPanel:
         fl.addRow("Text:", self.labelEdit)
         fl.addRow("Font:", fontLayout)
         fl.addRow("SVG:", svgLayout)
-        fl.addRow("Scale %:", self.scaleSpin)
+        fl.addRow("Scale:", self.scaleSpin)
         self.fontButton.clicked.connect(self.chooseFont)
         self.svgButton.clicked.connect(self.chooseSVG)
         self.layout.addWidget(lGroup)

@@ -22,6 +22,7 @@ class CompartmentFeature:
         obj.addProperty("App::PropertyString", "LabelText", "Label", "Text label for this compartment").LabelText = ""
         obj.addProperty("App::PropertyFile", "FontFile", "Label", "Path to TTF/OTF font file").FontFile = common.default_font()
         obj.addProperty("App::PropertyFile", "SVGFile", "Label", "Path to SVG font file").SVGFile = ""
+        obj.addProperty("App::PropertyFloat", "Scale", "Label", "Additional Scaling Factor").Scale = 1.0
         
         self.ensureProperties(obj)
 
@@ -106,15 +107,16 @@ class CompartmentFeature:
         if obj.FingerBottom:shapes.append(Part.makeCylinder(r,h,FreeCAD.Vector(cx,cy,-one)))
         
         # ----- add label engraving -----
+        bb = shape.BoundBox
+        bl = FreeCAD.Vector(bb.XMin, bb.YMin, bb.ZMin)
+        tr = FreeCAD.Vector(bb.XMax, bb.YMax, bb.ZMin)
         if obj.SVGFile:
-            bb = shape.BoundBox
-            label = common.svg_label(obj.SVGFile, obj.Depth)
-            label = common.set_on_face(FreeCAD.Vector(bb.XMin, bb.YMin, bb.ZMin), FreeCAD.Vector(bb.XMax, bb.YMax, bb.ZMin), label, .5)
+            label = common.svg_label(bl, tr, obj.SVGFile, obj.Depth, obj.Scale)
+            label = common.set_on_face(bl, tr, label, .5)
             shapes.append(label)
         elif obj.LabelText and obj.FontFile:
-            bb = shape.BoundBox
-            label = common.text_label(FreeCAD.Vector(bb.XMin, bb.YMin, bb.ZMin), FreeCAD.Vector(bb.XMax, bb.YMax, bb.ZMin), obj.LabelText, obj.FontFile, obj.Depth)
-            label = common.set_on_face(FreeCAD.Vector(bb.XMin, bb.YMin, bb.ZMin), FreeCAD.Vector(bb.XMax, bb.YMax, bb.ZMin), label, .5)
+            label = common.text_label(bl, tr, obj.LabelText, obj.FontFile, obj.Depth, obj.Scale)
+            label = common.set_on_face(bl, tr, label, .5)
             shapes.append(label)
 
         obj.Shape = Part.makeCompound(shapes)
