@@ -325,6 +325,13 @@ def orient_and_extrude(bottomleft, topright, faces, extrudelen):
         FreeCAD.Console.PrintError(f"Label engraving failed: {e}\n")
 
 def flatten_wire(wire):
+    """
+    remove any variance in the z direction that can occur from importing SVGs
+    Args:
+        wire (Part.Wire): The wire to be flattened.
+    Returns:
+        Part.Wire: The flattened wire.
+    """
     # Build a projection matrix that removes the Z component of any point
     m = FreeCAD.Matrix()
 

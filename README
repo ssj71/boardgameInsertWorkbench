@@ -35,6 +35,10 @@ I roughly tried to recreate the feature set of the Boardgame Insert Toolkit (BIT
 
 The defaults will create a basic deck box with a lid. With these basic tools you should be able to create a wide variety of inserts.
 
+ * the box dimensions are the absolute outer dimensions including the lid
+ * compartment depths are also accounting for he lid thickness
+ * there are no checks to ensure compartments fit within the box, its  a good idea to inspect the model
+
 ## Limitations
 
 * changing box/lid parameters can make labels get "lost" -- you may need to delete and re-add them

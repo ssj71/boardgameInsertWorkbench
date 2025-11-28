@@ -3,9 +3,6 @@ from PySide import QtGui
 import Draft, importSVG, Part, math, os
 import common
 
-#TODO: lid labels placement (center on box)
-#TODO: svg orientation
-
 class LabelFeature:
     def __init__(self, obj):
         obj.Proxy = self
@@ -35,7 +32,6 @@ class LabelFeature:
         label = None
         if obj.SVGFile:
             label = common.svg_label(p1, p2, obj.SVGFile, 2*obj.Depth, obj.Scale)
-            #label = common.set_on_face(p1, p2, label,0)
         elif obj.LabelText and obj.FontFile:
             label = common.text_label(p1, p2, obj.LabelText, obj.FontFile, 2*obj.Depth, obj.Scale)
         if not label or label.isNull():
@@ -166,12 +162,23 @@ class LabelTaskPanel:
             obj.SVGFile    = self.svgEdit.text()
             obj.Scale      = self.scaleSpin.value()
 
-            #recompute to update shape
+            # recompute to update shape
             obj.recompute()
 
             # place on face
             p1, p2 = common.get_face(parent, obj.Face)
             obj.Placement.Base = common.center_on_face(p1, p2, obj.Shape, obj.Depth)
+
+            # name it
+            if len(obj.Face) == 0:
+                s = "_Lid"
+            else:
+                s = "_" + obj.Face[0]
+            if obj.SVGFile:
+                name = os.path.split(obj.SVGFile)[-1].split(".")[0] + s + "_Label"
+            else:
+                name = obj.LabelText + s + "_Label"
+            obj.Label = name
         
         FreeCAD.ActiveDocument.recompute()
         return True
