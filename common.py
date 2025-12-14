@@ -2,6 +2,10 @@ import FreeCAD, FreeCADGui
 import Part, importSVG, Draft
 import math
 
+def has_properties(obj, names):
+    props = set(obj.PropertiesList)
+    return all(name in props for name in names)
+
 def get_edges(box, edge_type):
     found_edges = []
     if edge_type == "sides":

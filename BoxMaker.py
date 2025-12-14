@@ -176,7 +176,8 @@ class InsertFeature:
 
     def onChanged(self, obj, prop):
         lid = get_lid(obj)
-        if hasattr(obj, "HasLid") and hasattr(obj, "Clearance"): #clearance prevents adding the lid before those props exist
+        lidprops = ["HasLid", "Length", "Width", "Clearance", "LidThickness"]
+        if common.has_properties(obj, lidprops):
             if lid and obj.HasLid == False:
                 FreeCAD.ActiveDocument.removeObject(lid.Name)
                 lid = None
@@ -186,36 +187,32 @@ class InsertFeature:
                 update_compartment_zoffsets(obj)
         else:
             return
-        if lid and prop in ["Length", "Width", "HasLid", "LidThickness", "Clearance"]:
-            if prop == "Length":
-                lid.Length = obj.Length
-            elif prop == "Width":
-                lid.Width = obj.Width
-            elif prop == "LidThickness":
-                lid.Thickness = obj.LidThickness
-            elif prop == "Clearance":
-                lid.Clearance = obj.Clearance
+        if lid and prop in lidprops[1:]:
+            if not prop.replace("Lid", "") in lid.PropertiesList:
+                #lid is still initializing
+                return
+            lid.Length = obj.Length
+            lid.Width = obj.Width
+            lid.Thickness = obj.LidThickness
+            lid.Clearance = obj.Clearance
             lid.touch()
             update_compartment_zoffsets(obj)
         box = get_box(obj)
-        if box and prop in ["Length", "Width", "Height", "ChamferSize", "FilletRadius", "TopFilletRadius", "HasLid", "LidThickness"]:
-            if prop == "Length":
-                box.Length = obj.Length
-            elif prop == "Width":
-                box.Width = obj.Width
-            elif prop == "Height":
-                box.Height = obj.Height
-            elif prop == "ChamferSize":
-                box.ChamferSize = obj.ChamferSize
-            elif prop == "FilletRadius":
-                box.FilletRadius = obj.FilletRadius
-            elif prop == "TopFilletRadius":
-                box.TopFilletRadius = obj.TopFilletRadius
-            elif prop == "LidThickness":
-                if obj.HasLid:
-                    box.LidThickness = obj.LidThickness
-                else:
-                    box.LidThickness = 0
+        boxprops = ["Length", "Width", "Height", "ChamferSize", "FilletRadius", "TopFilletRadius", "HasLid", "LidThickness"]
+        if box and prop in boxprops:
+            if prop != "HasLid" and not prop in box.PropertiesList:
+                #box is still initializing
+                return
+            box.Length = obj.Length
+            box.Width = obj.Width
+            box.Height = obj.Height
+            box.ChamferSize = obj.ChamferSize
+            box.FilletRadius = obj.FilletRadius
+            box.TopFilletRadius = obj.TopFilletRadius
+            if obj.HasLid:
+                box.LidThickness = obj.LidThickness
+            else:
+                box.LidThickness = 0
             box.touch()
 
 
