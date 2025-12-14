@@ -2,6 +2,7 @@ import FreeCAD, FreeCADGui
 from PySide import QtGui
 import Draft, importSVG, Part, math, common, os
 
+
 class CompartmentFeature:
     def __init__(self, obj):
         obj.Proxy = self
@@ -29,32 +30,56 @@ class CompartmentFeature:
     def ensureProperties(self, obj):
         """Ensure properties match current ShapeType"""
         st = obj.ShapeType
-        # remove old shape-specific properties
-        for pname in ["Length","Width","Radius","Sides",
-                      "SideFilletRadius","BottomFilletRadius"]:
-            if pname in obj.PropertiesList:
-                obj.removeProperty(pname)
         
         if st == "Box":
-            obj.addProperty("App::PropertyLength","Length","Box","Length").Length=91
-            obj.addProperty("App::PropertyLength","Width","Box","Width").Width=64.5
-            obj.addProperty("App::PropertyLength","SideFilletRadius","Box","Side fillet radius").SideFilletRadius=2
-            obj.addProperty("App::PropertyLength","BottomFilletRadius","Box","Bottom fillet radius").BottomFilletRadius=0
+            if not hasattr(obj,"Length"):
+                obj.addProperty("App::PropertyLength","Length","Box","Length").Length=91
+            if not hasattr(obj,"Width"):
+                obj.addProperty("App::PropertyLength","Width","Box","Width").Width=64.5
+            if not hasattr(obj,"SideFilletRadius"):
+                obj.addProperty("App::PropertyLength","SideFilletRadius","Box","Side fillet radius").SideFilletRadius=2
+            if not hasattr(obj,"BottomFilletRadius"):
+                obj.addProperty("App::PropertyLength","BottomFilletRadius","Box","Bottom fillet radius").BottomFilletRadius=0
+            # remove old shape-specific properties
+            for pname in ["Radius", "Sides"]:
+                if pname in obj.PropertiesList:
+                    obj.removeProperty(pname)
         
         elif st == "Box2":
-            obj.addProperty("App::PropertyLength","Length","Box2","Length").Length=40
-            obj.addProperty("App::PropertyLength","Width","Box2","Width").Width=30
-            obj.addProperty("App::PropertyLength","BottomFilletRadius","Box2","Bottom fillet radius").BottomFilletRadius=2
+            if not hasattr(obj,"Length"):
+                obj.addProperty("App::PropertyLength","Length","Box2","Length").Length=40
+            if not hasattr(obj,"Width"):
+                obj.addProperty("App::PropertyLength","Width","Box2","Width").Width=30
+            if not hasattr(obj,"BottomFilletRadius"):
+                obj.addProperty("App::PropertyLength","BottomFilletRadius","Box2","Bottom fillet radius").BottomFilletRadius=2
+            # remove old shape-specific properties
+            for pname in ["Radius","Sides","SideFilletRadius"]:
+                if pname in obj.PropertiesList:
+                    obj.removeProperty(pname)
         
         elif st == "Cylinder":
-            obj.addProperty("App::PropertyLength","Radius","Cylinder","Radius").Radius=15
-            obj.addProperty("App::PropertyLength","BottomFilletRadius","Cylinder","Bottom fillet radius").BottomFilletRadius=0
+            if not hasattr(obj,"Radius"):
+                obj.addProperty("App::PropertyLength","Radius","Cylinder","Radius").Radius=15
+            if not hasattr(obj,"BottomFilletRadius"):
+                obj.addProperty("App::PropertyLength","BottomFilletRadius","Cylinder","Bottom fillet radius").BottomFilletRadius=0
+            # remove old shape-specific properties
+            for pname in ["Length","Width","Sides","SideFilletRadius"]:
+                if pname in obj.PropertiesList:
+                    obj.removeProperty(pname)
         
         elif st == "Polygon":
-            obj.addProperty("App::PropertyInteger","Sides","Polygon","Number of sides").Sides=6
-            obj.addProperty("App::PropertyLength","Radius","Polygon","Radius").Radius=10
-            obj.addProperty("App::PropertyLength","SideFilletRadius","Polygon","Side fillet radius").SideFilletRadius=2
-            obj.addProperty("App::PropertyLength","BottomFilletRadius","Polygon","Bottom fillet radius").BottomFilletRadius=0
+            if not hasattr(obj,"Sides"):
+                obj.addProperty("App::PropertyInteger","Sides","Polygon","Number of sides").Sides=6
+            if not hasattr(obj,"Radius"):
+                obj.addProperty("App::PropertyLength","Radius","Polygon","Radius").Radius=15
+            if not hasattr(obj,"SideFilletRadius"):
+                obj.addProperty("App::PropertyLength","SideFilletRadius","Polygon","Side fillet radius").SideFilletRadius=2
+            if not hasattr(obj,"BottomFilletRadius"):
+                obj.addProperty("App::PropertyLength","BottomFilletRadius","Polygon","Bottom fillet radius").BottomFilletRadius=0
+            # remove old shape-specific properties
+            for pname in ["Length","Width"]:
+                if pname in obj.PropertiesList:
+                    obj.removeProperty(pname)
 
     def onChanged(self, obj, prop):
         if prop=="ShapeType":
