@@ -312,6 +312,7 @@ class BoxTaskPanel:
         self.obj.FilletRadius = self.outerSidesFilletRadiusEdit.value()
         self.obj.TopFilletRadius = self.outerTopFilletRadiusEdit.value()
         self.obj.ChamferSize = self.chamferSizeEdit.value()
+        self.obj.HasLid = self.lidCheck.isChecked()
         self.obj.LidThickness = self.lidThicknessEdit.value()
         self.obj.Clearance = self.clearanceEdit.value()
         
