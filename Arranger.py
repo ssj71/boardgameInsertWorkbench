@@ -7,6 +7,8 @@ class ArrangeX:
     def Activated(self):
         doc = FreeCAD.ActiveDocument
         sel = FreeCADGui.Selection.getSelection()
+        if len(sel) < 1:
+            return
         compartments = False
         face = None
         for s in sel:
@@ -62,6 +64,8 @@ class ArrangeY:
     def Activated(self):
         doc = FreeCAD.ActiveDocument
         sel = FreeCADGui.Selection.getSelection()
+        if len(sel) < 1:
+            return
         compartments = False
         face = None
         for s in sel:
@@ -117,6 +121,8 @@ class AlignX:
     def Activated(self):
         doc = FreeCAD.ActiveDocument
         sel = FreeCADGui.Selection.getSelection()
+        if len(sel) < 1:
+            return
         compartments = False
         face = None
         for s in sel:
@@ -153,6 +159,8 @@ class AlignY:
     def Activated(self):
         doc = FreeCAD.ActiveDocument
         sel = FreeCADGui.Selection.getSelection()
+        if len(sel) < 1:
+            return
         compartments = False
         face = None
         for s in sel:
