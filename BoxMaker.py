@@ -75,7 +75,7 @@ def get_lid(obj):
 
 def get_box(obj):
     for child in obj.Group:
-        if child.Name == "Box":
+        if child.Name.startswith("Box"):
             return child
     return None
 
