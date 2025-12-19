@@ -379,15 +379,10 @@ class DuplicateCompartment:
         parent = sel[0].InList[0]
         parent.addObject(obj)
         obj.ViewObject.Proxy = ViewProviderCompartment(obj.ViewObject)
-        #obj.Placement.Base.x += sel[0].Placement.Base.x
-        #obj.Placement.Base.y += sel[0].Placement.Base.y
-        #obj.Visibility = False
         obj.ShapeType = sel[0].ShapeType
         #obj.ensureProperties(obj)
         for prop in sel[0].PropertiesList:
-            #if prop not in ["Shape","Label","Placement","InList","OutList"]:
             if prop not in ["ExpressionEngine", "Shape","Label","InList","OutList"]:
-                print(prop)
                 setattr(obj,prop,getattr(sel[0],prop))
 
         # Link compartment to box
