@@ -1,8 +1,10 @@
 # Boardgame Insert Workbench
 
-This is a FreeCAD 1.0 workbench designed to help design and 3d print custom inserts for board games. It provides tools to design organizers with multiple compartments for game components or individual boxes for pieces depending on your design preferrences. This could be used to create various boxes, trays and organizers, as well as other fabrication techologies but it was designed with board games and fdm printers in mind.
+![screenshot](img/screenshot.png)
 
-I roughly tried to recreate the feature set of the Boardgame Insert Toolkit (BIT) for openSCAD though there are many features there not yet implemented here (dividers, lattices, probably more). I used BIT for one design but was disappointed by the lack of fillets. I also found the syntax errors I made when using it hard to debug. Using a workbench in freeCAD allows for a WYSIWYG approach to designing inserts.
+This is a FreeCAD 1.0 workbench designed to help design and 3d print custom inserts for board games. It provides tools to design organizers with multiple compartments for game components or individual boxes for pieces depending on your design preferrences. This could be used to create various boxes, trays and organizers, or with other fabrication techologies, but it was designed with board games and fdm printers in mind.
+
+I roughly tried to recreate the feature set of the [Boardgame Insert Toolkit (BIT)](https://github.com/dppdppd/The-Boardgame-Insert-Toolkit) for openSCAD though there are many features there not yet implemented here (dividers, lattices, probably more). I used BIT for one design but was disappointed by the lack of fillets. I also found the syntax errors I made when using it hard to debug. Using a workbench in freeCAD allows for a WYSIWYG approach to designing inserts.
 
 ## Installation
 
@@ -21,7 +23,8 @@ I roughly tried to recreate the feature set of the Boardgame Insert Toolkit (BIT
     * Rectangle 2 (round bottom or sideways cylinder)
  * lots of fillet options for both boxes and compartments
  * SVG or text labels with font selection, size, and placement options
- * Optional lids
+ * Optional sliding lids
+ * convenient compartment arrangement functions
 
 
 ## Useage
