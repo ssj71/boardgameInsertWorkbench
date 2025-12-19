@@ -364,5 +364,44 @@ class AddCompartment:
     def IsActive(self):
         return True
 
+class DuplicateCompartment:
+    def GetResources(self):
+        return {'MenuText': 'Duplicate Compartment','ToolTip': 'Make a copy of a compartment','Pixmap': ''}
+
+    def Activated(self):
+        doc = FreeCAD.ActiveDocument
+        sel = FreeCADGui.Selection.getSelection()
+        if not sel or not hasattr(sel[0].Proxy,"__class__") or sel[0].Proxy.__class__.__name__!="CompartmentFeature":
+            FreeCAD.Console.PrintError("Select a compartment to copy.\n"); return
+        obj = doc.addObject("Part::FeaturePython","Compartment")
+        CompartmentFeature(obj)
+        #add it to the insert
+        parent = sel[0].InList[0]
+        parent.addObject(obj)
+        obj.ViewObject.Proxy = ViewProviderCompartment(obj.ViewObject)
+        #obj.Placement.Base.x += sel[0].Placement.Base.x
+        #obj.Placement.Base.y += sel[0].Placement.Base.y
+        #obj.Visibility = False
+        obj.ShapeType = sel[0].ShapeType
+        #obj.ensureProperties(obj)
+        for prop in sel[0].PropertiesList:
+            #if prop not in ["Shape","Label","Placement","InList","OutList"]:
+            if prop not in ["ExpressionEngine", "Shape","Label","InList","OutList"]:
+                print(prop)
+                setattr(obj,prop,getattr(sel[0],prop))
+
+        # Link compartment to box
+        for o in parent.Group:
+            if o.Proxy.__class__.__name__=="BoxFeature":
+                box = o
+        box.Compartments = [*box.Compartments, obj]
+        doc.recompute()
+        FreeCADGui.Control.showDialog(CompartmentTaskPanel(obj))
+        FreeCADGui.SendMsgToActiveView("ViewFit")
+
+    def IsActive(self):
+        return True
+
 FreeCADGui.addCommand("Add_Compartment_Command", AddCompartment())
+FreeCADGui.addCommand("Duplicate_Compartment_Command", DuplicateCompartment())
 
