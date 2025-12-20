@@ -21,10 +21,10 @@ I roughly tried to recreate the feature set of the [Boardgame Insert Toolkit (BI
     * Circular
     * N-sided polygon shapes
     * Rectangle 2 (round bottom or sideways cylinder)
- * lots of fillet options for both boxes and compartments
+ * Lots of fillet options for both boxes and compartments
  * SVG or text labels with font selection, size, and placement options
  * Optional sliding lids
- * convenient compartment arrangement functions
+ * Convenient compartment arrangement functions
 
 
 ## Useage
@@ -36,14 +36,16 @@ I roughly tried to recreate the feature set of the [Boardgame Insert Toolkit (BI
  5. Repeat steps 3 and 4 as needed to add more compartments.
  6. Use the "Add Label" tool to add labels to the box or lid as desired (for lid you must select the lid specifically in the tree view before adding the label).
 
-The defaults will create a basic deck box with a lid. With these basic tools you should be able to create a wide variety of inserts.
+The defaults will create a deck box with a lid. With these basic tools you should be able to create a wide variety of inserts.
 
- * the box dimensions are the absolute outer dimensions including the lid
- * compartment depths are also accounting for he lid thickness
- * there are no checks to ensure compartments fit within the box, its  a good idea to inspect the model
+### Notes
+
+ * The box dimensions are the absolute outer dimensions including the lid. This way you can easily design boxes to fit within a certain space.
+ * Compartment depths account for the lid thickness. Just measure your stack of components and put that as the compartment depth.
 
 ## Limitations
 
-* changing box/lid parameters can make labels get "lost" -- you may need to delete and re-add them
+ * Changing box/lid parameters can make labels get "lost" -- you may need to delete and re-add them
+ * There are no checks to ensure compartments fit within the box; it's  a good idea to inspect the model
 
 enjoy!
