@@ -11,7 +11,7 @@ I roughly tried to recreate the feature set of the [Boardgame Insert Toolkit (BI
  1. Download or clone this repository.
  2. Copy or link the "BoardgameInsertWorkbench" folder to your FreeCAD "Mod" directory. You can find the location of this directory by opening FreeCAD, going to "Edit" -> "Preferences" -> "General" -> "Macro" tab, and checking the "Macro directory" path. The "Mod" folder should be located in the same parent directory as the "Macro" folder but will typically need to be created manually.
     a. On Windows, the "Mod" directory is usually located at `C:\Users\<YourUsername>\AppData\Roaming\FreeCAD\Mod`.
-    b. On Linux, the "Mod" directory is usually located at `/home/<YourUsername>/.FreeCAD/Mod`.
+    b. On Linux, the "Mod" directory is usually located at `/home/<YourUsername>/.local/share/FreeCAD/Mod`.
     c. On macOS, the "Mod" directory is usually located at `/Users/<YourUsername>/Library/Application Support/FreeCAD`
     d. Create the "Mod" folder if it does not already exist using mkdir in a terminal or use a file explorer to create it.
     e. You can clone the repository directly into the "Mod" folder or create a symbolic link to the repository location on your system (i.e. using `ln -s /path/to/BoardgameInsertWorkbench /path/to/FreeCAD/Mod/BoardgameInsertWorkbench` on Linux or macOS).
