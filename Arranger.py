@@ -2,7 +2,7 @@ import FreeCAD, FreeCADGui
 
 class ArrangeX:
     def GetResources(self):
-        return {'MenuText': 'Arrange X','ToolTip': 'Evenly separate and center compartments','Pixmap': ''}
+        return {'MenuText': 'Distribute X','ToolTip': 'Evenly separate and center compartments','Pixmap': ''}
 
     def Activated(self):
         doc = FreeCAD.ActiveDocument
@@ -59,7 +59,7 @@ class ArrangeX:
 
 class ArrangeY:
     def GetResources(self):
-        return {'MenuText': 'Arrange Y','ToolTip': 'Evenly separate and center compartments','Pixmap': ''}
+        return {'MenuText': 'Distribute Y','ToolTip': 'Evenly separate and center compartments','Pixmap': ''}
 
     def Activated(self):
         doc = FreeCAD.ActiveDocument
