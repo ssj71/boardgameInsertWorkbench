@@ -9,7 +9,12 @@ I roughly tried to recreate the feature set of the [Boardgame Insert Toolkit (BI
 ## Installation
 
  1. Download or clone this repository.
- 2. Copy or link the "BoardgameInsertWorkbench" folder to your FreeCAD "Mod" directory. You can find the location of this directory by opening FreeCAD, going to "Edit" -> "Preferences" -> "General" -> "Macro" tab, and checking the "Macro directory" path. The "Mod" folder is usually located in the same parent directory as the "Macro" folder.
+ 2. Copy or link the "BoardgameInsertWorkbench" folder to your FreeCAD "Mod" directory. You can find the location of this directory by opening FreeCAD, going to "Edit" -> "Preferences" -> "General" -> "Macro" tab, and checking the "Macro directory" path. The "Mod" folder should be located in the same parent directory as the "Macro" folder but will typically need to be created manually.
+    a. On Windows, the "Mod" directory is usually located at `C:\Users\<YourUsername>\AppData\Roaming\FreeCAD\Mod`.
+    b. On Linux, the "Mod" directory is usually located at `/home/<YourUsername>/.FreeCAD/Mod`.
+    c. On macOS, the "Mod" directory is usually located at `/Users/<YourUsername>/Library/Application Support/FreeCAD`
+    d. Create the "Mod" folder if it does not already exist using mkdir in a terminal or use a file explorer to create it.
+    e. You can clone the repository directly into the "Mod" folder or create a symbolic link to the repository location on your system (i.e. using `ln -s /path/to/BoardgameInsertWorkbench /path/to/FreeCAD/Mod/BoardgameInsertWorkbench` on Linux or macOS).
  3. Restart FreeCAD.
 
 ## Features
@@ -24,7 +29,7 @@ I roughly tried to recreate the feature set of the [Boardgame Insert Toolkit (BI
  * Lots of fillet options for both boxes and compartments
  * SVG or text labels with font selection, size, and placement options
  * Optional sliding lids
- * Convenient compartment arrangement functions
+ * Convenient compartment arrangement functions (align and distribute)
 
 
 ## Useage
@@ -47,5 +52,9 @@ The defaults will create a deck box with a lid. With these basic tools you shoul
 
  * Changing box/lid parameters can make labels get "lost" -- you may need to delete and re-add them
  * There are no checks to ensure compartments fit within the box; it's  a good idea to inspect the model
+
+## Examples
+
+Some links to examples are included in the [examples](examples.md) page. If you have the workbench installed you can open the FreeCAD files included to see how they were made.
 
 enjoy!
