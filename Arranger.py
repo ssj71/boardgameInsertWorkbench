@@ -41,7 +41,7 @@ class ArrangeX:
                 # polgon or cylinder compartment
                 xtotal += obj.Radius.Value * 2
         xgap = (parent.Length.Value - xtotal) / (len(sel) + 1)
-        if xgap < 0:
+        if xgap < 0.5:
             xgap = 1
             xpos = (parent.Length.Value - (xtotal + xgap * (len(sel) - 1))) / 2
         else:

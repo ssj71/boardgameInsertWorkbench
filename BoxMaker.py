@@ -102,7 +102,6 @@ class LidFeature:
         obj.ViewObject.Proxy = ViewProviderBGIW(obj.ViewObject)
 
     def execute(self, obj):
-        gap = FreeCAD.Units.Quantity("2 mm")
         lid = create_lid(obj.Length, obj.Width, obj.Thickness, obj.Clearance)
         for labl in obj.Labels:
             if labl.Shape is not None and not labl.Shape.isNull():
@@ -331,6 +330,7 @@ class BoxTaskPanel:
             lid.Thickness = self.obj.LidThickness
             lid.Clearance = self.obj.Clearance
             lid.Placement.Base.x = self.obj.Length + FreeCAD.Units.Quantity("2 mm")
+            lid.Placement.Base.y = RIM_WIDTH + self.obj.Clearance
         box = get_box(self.obj)
         if box:
             box.Length = self.obj.Length
