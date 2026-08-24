@@ -15,11 +15,13 @@ class CompartmentFeature:
         
         # common to all: finger holes
         obj.addProperty("App::PropertyLength", "FingerRadius", "FingerHoles", "Finger hole radius").FingerRadius = 10.0
+        if not hasattr(obj,"FingerDepth"):
+            obj.addProperty("App::PropertyLength", "FingerDepth", "FingerHoles", "Depth offset of finger hole").FingerDepth = -1.0
         for name in ["FingerFront","FingerBack","FingerLeft","FingerRight","FingerBottom"]:
             obj.addProperty("App::PropertyBool", name, "FingerHoles", name)
             setattr(obj,name,False)
         
-       # Label options
+        # Label options
         obj.addProperty("App::PropertyString", "LabelText", "Label", "Text label for this compartment").LabelText = ""
         obj.addProperty("App::PropertyFile", "FontFile", "Label", "Path to TTF/OTF font file").FontFile = common.default_font()
         obj.addProperty("App::PropertyFile", "SVGFile", "Label", "Path to SVG font file").SVGFile = ""
@@ -30,7 +32,12 @@ class CompartmentFeature:
     def ensureProperties(self, obj):
         """Ensure properties match current ShapeType"""
         st = obj.ShapeType
-        
+
+        #check for new properties that weren't in old versions of the toolbench
+        if not hasattr(obj,"FingerDepth"):
+            obj.addProperty("App::PropertyLength", "FingerDepth", "FingerHoles", "Depth offset of finger hole").FingerDepth = -1.0
+
+        #now just check that it has the right properties for its shape type, and remove any old ones that don't apply
         if st == "Box":
             if not hasattr(obj,"Length"):
                 obj.addProperty("App::PropertyLength","Length","Box","Length").Length=91
@@ -85,6 +92,9 @@ class CompartmentFeature:
         if prop=="ShapeType":
             self.ensureProperties(obj)
 
+    def onDocumentRestored(self, obj):
+        self.ensureProperties(obj)
+
     def execute(self, obj):
         z = obj.ZOffset - obj.Depth
         st = obj.ShapeType
@@ -125,10 +135,10 @@ class CompartmentFeature:
         one = FreeCAD.Units.Quantity("1 mm")
         cx = shape.BoundBox.XLength/2
         cy = shape.BoundBox.YLength/2
-        if obj.FingerFront: shapes.append(Part.makeCylinder(r,h,FreeCAD.Vector(cx,0,z-one)))
-        if obj.FingerBack:  shapes.append(Part.makeCylinder(r,h,FreeCAD.Vector(cx,shape.BoundBox.YMax,z-one)))
-        if obj.FingerLeft:  shapes.append(Part.makeCylinder(r,h,FreeCAD.Vector(0,cy,z-one)))
-        if obj.FingerRight: shapes.append(Part.makeCylinder(r,h,FreeCAD.Vector(shape.BoundBox.XMax,cy,z-one)))
+        if obj.FingerFront: shapes.append(Part.makeCylinder(r,h,FreeCAD.Vector(cx,0,z+obj.FingerDepth)))
+        if obj.FingerBack:  shapes.append(Part.makeCylinder(r,h,FreeCAD.Vector(cx,shape.BoundBox.YMax,z+obj.FingerDepth)))
+        if obj.FingerLeft:  shapes.append(Part.makeCylinder(r,h,FreeCAD.Vector(0,cy,z+obj.FingerDepth)))
+        if obj.FingerRight: shapes.append(Part.makeCylinder(r,h,FreeCAD.Vector(shape.BoundBox.XMax,cy,z+obj.FingerDepth)))
         if obj.FingerBottom:shapes.append(Part.makeCylinder(r,h,FreeCAD.Vector(cx,cy,-one)))
         
         # ----- add label engraving -----
@@ -167,6 +177,7 @@ class CompartmentTaskPanel:
         fGroup = QtGui.QGroupBox("Finger Holes")
         fl = QtGui.QFormLayout(fGroup)
         self.rSpin = QtGui.QDoubleSpinBox(); self.rSpin.setRange(0,1000); self.rSpin.setValue(obj.FingerRadius)
+        self.fdSpin = QtGui.QDoubleSpinBox(); self.fdSpin.setRange(-1000,1000); self.fdSpin.setValue(obj.FingerDepth)
         self.chkFront = QtGui.QCheckBox("Front");  self.chkFront.setChecked(obj.FingerFront)
         self.chkBack  = QtGui.QCheckBox("Back");   self.chkBack.setChecked(obj.FingerBack)
         self.chkLeft  = QtGui.QCheckBox("Left");   self.chkLeft.setChecked(obj.FingerLeft)
@@ -289,6 +300,7 @@ class CompartmentTaskPanel:
         
         # finger hole values
         self.obj.FingerRadius = self.rSpin.value()
+        self.obj.FingerDepth = self.fdSpin.value()
         self.obj.FingerFront  = self.chkFront.isChecked()
         self.obj.FingerBack   = self.chkBack.isChecked()
         self.obj.FingerLeft   = self.chkLeft.isChecked()
