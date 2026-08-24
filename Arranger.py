@@ -1,5 +1,7 @@
 import FreeCAD, FreeCADGui
 
+RIM_WIDTH = 1.0
+
 class ArrangeX:
     def GetResources(self):
         return {'MenuText': 'Distribute X','ToolTip': 'Evenly separate and center compartments','Pixmap': ''}
@@ -85,10 +87,16 @@ class ArrangeY:
                 FreeCAD.Console.PrintError("Select only compartments or only labels from a single face.\n"); return
         parent = sel[0].InList[1] # get the box or lid parent (not insert)
 
+        parentw = parent.Width.Value
+        if hasattr(parent,"Clearance"):
+            parentw -= (parent.Clearance.Value + RIM_WIDTH) * 2
+
         # now we know we have consistent objects selected
         ytotal = 0
         for obj in sel:
-            if hasattr(obj,"Width"):
+            if True:
+                ytotal += obj.Shape.BoundBox.YLength
+            elif hasattr(obj,"Width"):
                 # box compartment
                 ytotal += obj.Width.Value
             elif hasattr(obj,"Face"):
@@ -97,16 +105,18 @@ class ArrangeY:
             else:
                 # polgon or cylinder compartment
                 ytotal += obj.Radius.Value * 2
-        ygap = (parent.Width.Value - ytotal) / (len(sel) + 1)
+        ygap = (parentw - ytotal) / (len(sel) + 1)
         if ygap < 0.5:
             ygap = 1
-            ypos = (parent.Width.Value -(ytotal + ygap * (len(sel) - 1))) / 2
+            ypos = (parentw -(ytotal + ygap * (len(sel) - 1))) / 2
         else:
             ypos = ygap
         sortsel = sorted(sel, key=lambda o: o.Placement.Base.y)
         for obj in sortsel:
-            obj.Placement.Base.y = ypos
-            ypos += ygap + (obj.Width.Value if hasattr(obj,"Width") else (obj.Shape.BoundBox.YLength if hasattr(obj,"Face") else obj.Radius.Value * 2))
+            print(ypos, obj.Placement.Base.y, obj.Shape.BoundBox.YMin)
+            obj.Placement.Base.y = ypos + obj.Placement.Base.y - obj.Shape.BoundBox.YMin
+            #ypos += ygap + (obj.Width.Value if hasattr(obj,"Width") else (obj.Shape.BoundBox.YLength if hasattr(obj,"Face") else obj.Radius.Value * 2))
+            ypos += ygap + obj.Shape.BoundBox.YLength
 
         doc.recompute()
         FreeCADGui.SendMsgToActiveView("ViewFit")
